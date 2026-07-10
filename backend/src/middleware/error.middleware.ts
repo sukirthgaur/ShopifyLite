@@ -3,13 +3,23 @@ import { ZodError } from 'zod';
 import { Prisma } from '@prisma/client';
 import { ApiError } from '../utils/ApiError.js';
 
+/**
+ * Global Error Handler Middleware
+ * Express recognizes this as an error-handling middleware because it accepts four arguments:
+ * `(err, req, res, next)`.
+ * 
+ * Instead of crashing the server or sending default raw text stack traces, this catches errors
+ * across our application and formats them into a clean JSON structure:
+ * `{ success: false, message: string, errors: string[] }`
+ */
 export const errorHandler = (
   err: Error,
   _req: Request,
   res: Response,
   _next: NextFunction
 ): void => {
-  // Known API errors thrown intentionally
+  
+  // 1. Handle Known API errors thrown intentionally using our `ApiError` class
   if (err instanceof ApiError) {
     res.status(err.statusCode).json({
       success: false,
@@ -19,8 +29,9 @@ export const errorHandler = (
     return;
   }
 
-  // Zod validation errors
+  // 2. Handle Zod validation errors (e.g. from request payload schema parsing)
   if (err instanceof ZodError) {
+    // Map individual path errors to a flat string list (e.g., "email: Invalid email address")
     const formattedErrors = err.errors.map(
       (e) => `${e.path.join('.')}: ${e.message}`
     );
@@ -32,7 +43,8 @@ export const errorHandler = (
     return;
   }
 
-  // Prisma unique constraint violations
+  // 3. Handle Prisma unique constraint violations (e.g. email or slug duplicate key)
+  // Prisma error code 'P2002' represents unique constraint check failures.
   if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
     const target = (err.meta?.target as string[])?.join(', ') || 'field';
     res.status(409).json({
@@ -43,7 +55,7 @@ export const errorHandler = (
     return;
   }
 
-  // Unexpected errors — don't leak internal details
+  // 4. Unexpected errors — log stack traces on server for developer, but hide internal details from client
   console.error('Unhandled error:', err);
   res.status(500).json({
     success: false,

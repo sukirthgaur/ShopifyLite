@@ -3,15 +3,25 @@ import { ApiError } from '../../utils/ApiError.js';
 import { JwtPayload, PaginationQuery } from '../../types/index.js';
 import { CreateStoreInput, UpdateStoreInput } from './store.schema.js';
 
+/**
+ * Stores Module Database Services
+ * Executes database operations with strict tenant boundary checks.
+ */
+
+/**
+ * Creates a new store storefront in the database.
+ * Ensures the slug url handles are unique.
+ * For STORE_ADMIN, registers the store, and links the calling user account to the store.
+ */
 export const createStore = async (data: CreateStoreInput, caller: JwtPayload) => {
-  // Check slug uniqueness
+  // Ensure slug uniqueness
   const existingSlug = await prisma.store.findUnique({ where: { slug: data.slug } });
   if (existingSlug) {
     throw new ApiError(409, 'A store with this slug already exists');
   }
 
+  // STORE_ADMIN limit: A merchant account can only manage/create a single store.
   if (caller.role === 'STORE_ADMIN') {
-    // STORE_ADMIN cannot create a second store
     if (caller.storeId) {
       throw new ApiError(409, 'You already have a store');
     }
@@ -20,7 +30,7 @@ export const createStore = async (data: CreateStoreInput, caller: JwtPayload) =>
       data: { name: data.name, slug: data.slug },
     });
 
-    // Link the caller to the new store
+    // Link the caller user to the newly registered store
     await prisma.user.update({
       where: { id: caller.userId },
       data: { storeId: store.id },
@@ -29,12 +39,12 @@ export const createStore = async (data: CreateStoreInput, caller: JwtPayload) =>
     return store;
   }
 
-  // SUPER_ADMIN flow
+  // SUPER_ADMIN flow: Can create multiple storefronts and optional link users
   const store = await prisma.store.create({
     data: { name: data.name, slug: data.slug },
   });
 
-  // Optionally assign a user to the store
+  // Assign user to store if userId parameter is provided in query
   if (data.userId) {
     await prisma.user.update({
       where: { id: data.userId },
@@ -45,6 +55,11 @@ export const createStore = async (data: CreateStoreInput, caller: JwtPayload) =>
   return store;
 };
 
+/**
+ * Fetches list of stores.
+ * - SUPER_ADMIN: returns all global stores with pagination metadata.
+ * - STORE_ADMIN: returns only their single associated store.
+ */
 export const getStores = async (caller: JwtPayload, pagination: PaginationQuery) => {
   const { page, limit } = pagination;
   const skip = (page - 1) * limit;
@@ -54,7 +69,7 @@ export const getStores = async (caller: JwtPayload, pagination: PaginationQuery)
       prisma.store.findMany({
         skip,
         take: limit,
-        include: { _count: { select: { users: true } } },
+        include: { _count: { select: { users: true } } }, // Fetch count of users assigned to store
         orderBy: { createdAt: 'desc' },
       }),
       prisma.store.count(),
@@ -66,7 +81,7 @@ export const getStores = async (caller: JwtPayload, pagination: PaginationQuery)
     };
   }
 
-  // STORE_ADMIN: return only their store
+  // STORE_ADMIN: return only their associated store
   if (!caller.storeId) {
     return {
       stores: [],
@@ -85,6 +100,10 @@ export const getStores = async (caller: JwtPayload, pagination: PaginationQuery)
   };
 };
 
+/**
+ * Fetches a single store by ID.
+ * Implements strict tenant isolation for STORE_ADMIN.
+ */
 export const getStoreById = async (storeId: string, caller: JwtPayload) => {
   const store = await prisma.store.findUnique({
     where: { id: storeId },
@@ -95,7 +114,7 @@ export const getStoreById = async (storeId: string, caller: JwtPayload) => {
     throw new ApiError(404, 'Store not found');
   }
 
-  // Tenant isolation: STORE_ADMIN can only view their own store
+  // Tenant isolation: STORE_ADMIN can only view details of their own store
   if (caller.role === 'STORE_ADMIN' && store.id !== caller.storeId) {
     throw new ApiError(403, 'Access denied. You can only view your own store.');
   }
@@ -103,23 +122,27 @@ export const getStoreById = async (storeId: string, caller: JwtPayload) => {
   return store;
 };
 
+/**
+ * Updates store details.
+ * Implements strict tenant isolation checks.
+ */
 export const updateStore = async (storeId: string, data: UpdateStoreInput, caller: JwtPayload) => {
   const store = await prisma.store.findUnique({ where: { id: storeId } });
   if (!store) {
     throw new ApiError(404, 'Store not found');
   }
 
-  // Tenant isolation
+  // Tenant isolation for STORE_ADMIN
   if (caller.role === 'STORE_ADMIN') {
     if (store.id !== caller.storeId) {
       throw new ApiError(403, 'Access denied. You can only update your own store.');
     }
-    // STORE_ADMIN cannot change active status
+    // STORE_ADMIN cannot change the active/inactive status of their store
     const { isActive, ...allowedUpdates } = data;
     data = allowedUpdates;
   }
 
-  // Check slug uniqueness if slug is changing
+  // Check unique slug URL handle uniqueness if modified
   if (data.slug && data.slug !== store.slug) {
     const existing = await prisma.store.findUnique({ where: { slug: data.slug } });
     if (existing) {
@@ -135,6 +158,9 @@ export const updateStore = async (storeId: string, data: UpdateStoreInput, calle
   return updated;
 };
 
+/**
+ * Deletes a store by ID (restricted to SUPER_ADMIN)
+ */
 export const deleteStore = async (storeId: string) => {
   const store = await prisma.store.findUnique({ where: { id: storeId } });
   if (!store) {
