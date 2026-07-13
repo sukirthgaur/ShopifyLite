@@ -16,8 +16,8 @@ import * as authService from './auth.service.js';
  */
 export const register = asyncHandler(async (req: Request, res: Response) => {
   const data = registerSchema.parse(req.body);
-  const user = await authService.register(data);
-  res.status(201).json(new ApiResponse(true, 'User registered successfully', user));
+  const result = await authService.register(data);
+  res.status(201).json(new ApiResponse(true, 'User registered successfully', result));
 });
 
 /**

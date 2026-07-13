@@ -37,7 +37,14 @@ export const register = async (data: RegisterInput) => {
     },
   });
 
-  return excludePassword(user);
+  // Encode User UID, role permission, and associated Store UID into signed JWT token
+  const token = signToken({
+    userId: user.id,
+    role: user.role,
+    storeId: user.storeId,
+  });
+
+  return { user: excludePassword(user), token };
 };
 
 /**
