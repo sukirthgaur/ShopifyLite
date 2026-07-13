@@ -12,8 +12,6 @@ export const createStoreSchema = z.object({
   name: z.string().min(1, 'Store name is required'),
   // Slug acts as a unique tenant identifier in routes
   slug: z.string().min(1, 'Slug is required').regex(slugRegex, 'Slug must contain only lowercase letters, numbers, and hyphens'),
-  // Optional user ID mapping to tie a merchant to the store immediately (used by SUPER_ADMINs)
-  userId: z.string().uuid('Invalid user ID').optional(),
 });
 
 // Schema validating storefront update payloads.

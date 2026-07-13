@@ -21,36 +21,23 @@ export const createStore = async (data: CreateStoreInput, caller: JwtPayload) =>
   }
 
   // STORE_ADMIN limit: A merchant account can only manage/create a single store.
-  if (caller.role === 'STORE_ADMIN') {
-    if (caller.storeId) {
-      throw new ApiError(409, 'You already have a store');
-    }
+  if (caller.storeId) {
+    throw new ApiError(409, 'You already have a store');
+  }
 
-    const store = await prisma.store.create({
+  // Create store and link caller user to the newly registered store in a transaction
+  const store = await prisma.$transaction(async (tx) => {
+    const newStore = await tx.store.create({
       data: { name: data.name, slug: data.slug },
     });
 
-    // Link the caller user to the newly registered store
-    await prisma.user.update({
+    await tx.user.update({
       where: { id: caller.userId },
-      data: { storeId: store.id },
+      data: { storeId: newStore.id },
     });
 
-    return store;
-  }
-
-  // SUPER_ADMIN flow: Can create multiple storefronts and optional link users
-  const store = await prisma.store.create({
-    data: { name: data.name, slug: data.slug },
+    return newStore;
   });
-
-  // Assign user to store if userId parameter is provided in query
-  if (data.userId) {
-    await prisma.user.update({
-      where: { id: data.userId },
-      data: { storeId: store.id },
-    });
-  }
 
   return store;
 };
@@ -69,7 +56,7 @@ export const getStores = async (caller: JwtPayload, pagination: PaginationQuery)
       prisma.store.findMany({
         skip,
         take: limit,
-        include: { _count: { select: { users: true } } }, // Fetch count of users assigned to store
+        include: { admin: { select: { id: true, name: true, email: true } } }, // Fetch admin details for the store
         orderBy: { createdAt: 'desc' },
       }),
       prisma.store.count(),
@@ -91,7 +78,7 @@ export const getStores = async (caller: JwtPayload, pagination: PaginationQuery)
 
   const store = await prisma.store.findUnique({
     where: { id: caller.storeId },
-    include: { _count: { select: { users: true } } },
+    include: { admin: { select: { id: true, name: true, email: true } } },
   });
 
   return {
@@ -107,7 +94,7 @@ export const getStores = async (caller: JwtPayload, pagination: PaginationQuery)
 export const getStoreById = async (storeId: string, caller: JwtPayload) => {
   const store = await prisma.store.findUnique({
     where: { id: storeId },
-    include: { users: { select: { id: true, name: true, email: true, role: true, createdAt: true, updatedAt: true } } },
+    include: { admin: { select: { id: true, name: true, email: true, role: true, createdAt: true, updatedAt: true } } },
   });
 
   if (!store) {

@@ -41,7 +41,9 @@ async function main() {
   const alphaAdminPassword = await bcrypt.hash('StoreAdmin123!', SALT_ROUNDS);
   await prisma.user.upsert({
     where: { email: 'alpha@demo.com' },
-    update: {},
+    update: {
+      storeId: storeAlpha.id, // Ensure link is intact
+    },
     create: {
       name: 'Alpha Admin',
       email: 'alpha@demo.com',
@@ -65,7 +67,9 @@ async function main() {
   const betaAdminPassword = await bcrypt.hash('StoreAdmin123!', SALT_ROUNDS);
   await prisma.user.upsert({
     where: { email: 'beta@demo.com' },
-    update: {},
+    update: {
+      storeId: storeBeta.id, // Ensure link is intact
+    },
     create: {
       name: 'Beta Admin',
       email: 'beta@demo.com',
@@ -74,6 +78,84 @@ async function main() {
       storeId: storeBeta.id, // Linking user relation to Store Beta
     },
   });
+
+  // 6. Seed products for Store Alpha
+  const alphaProducts = [
+    {
+      name: 'Alpha T-Shirt',
+      price: 25.00,
+      imageUrl: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500',
+      stock: 100,
+    },
+    {
+      name: 'Alpha Hoodie',
+      price: 55.00,
+      imageUrl: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=500',
+      stock: 50,
+    },
+    {
+      name: 'Alpha Mug',
+      price: 15.00,
+      imageUrl: 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=500',
+      stock: 200,
+    },
+  ];
+
+  for (const prod of alphaProducts) {
+    const existing = await prisma.product.findFirst({
+      where: { storeId: storeAlpha.id, name: prod.name },
+    });
+    if (!existing) {
+      await prisma.product.create({
+        data: {
+          storeId: storeAlpha.id,
+          name: prod.name,
+          price: prod.price,
+          imageUrl: prod.imageUrl,
+          stock: prod.stock,
+        },
+      });
+    }
+  }
+
+  // 7. Seed products for Store Beta
+  const betaProducts = [
+    {
+      name: 'Beta Sneaker',
+      price: 120.00,
+      imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500',
+      stock: 30,
+    },
+    {
+      name: 'Beta Backpack',
+      price: 80.00,
+      imageUrl: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500',
+      stock: 40,
+    },
+    {
+      name: 'Beta Cap',
+      price: 20.00,
+      imageUrl: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=500',
+      stock: 150,
+    },
+  ];
+
+  for (const prod of betaProducts) {
+    const existing = await prisma.product.findFirst({
+      where: { storeId: storeBeta.id, name: prod.name },
+    });
+    if (!existing) {
+      await prisma.product.create({
+        data: {
+          storeId: storeBeta.id,
+          name: prod.name,
+          price: prod.price,
+          imageUrl: prod.imageUrl,
+          stock: prod.stock,
+        },
+      });
+    }
+  }
 
   console.log('Seed completed successfully.');
 }

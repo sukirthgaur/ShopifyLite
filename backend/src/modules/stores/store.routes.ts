@@ -10,8 +10,8 @@ const router = Router();
  * Integrates tenant authentication guards and access controls.
  */
 
-// Route to create a storefront. Both roles can create (with role restrictions handled inside service)
-router.post('/', authenticate, storeController.createStore);
+// Route to create a storefront. Restricting access strictly to STORE_ADMIN.
+router.post('/', authenticate, requireRole('STORE_ADMIN'), storeController.createStore);
 
 // Route to list stores. Tenant-isolated (STORE_ADMIN only retrieves their associated store)
 router.get('/', authenticate, storeController.getStores);

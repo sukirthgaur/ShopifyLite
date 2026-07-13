@@ -28,8 +28,21 @@ export interface Store {
   name: string;
   slug: string;
   isActive: boolean;
-  users?: User[];
-  _count?: { users: number };
+  admin?: User | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Store Product Model
+ */
+export interface Product {
+  id: string;
+  storeId: string;
+  name: string;
+  price: number;
+  imageUrl: string;
+  stock: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -84,4 +97,25 @@ export interface StoreListResponse {
 export interface UserListResponse {
   users: User[];
   pagination: PaginationMeta;
+}
+
+/**
+ * Paginated Product list response
+ */
+export interface ProductListResponse {
+  products: Product[];
+  pagination: PaginationMeta;
+}
+
+/**
+ * Public Storefront response
+ */
+export interface StorefrontResponse {
+  storeName: string;
+  products: {
+    id: string;
+    name: string;
+    price: number;
+    imageUrl: string;
+  }[];
 }

@@ -9,6 +9,10 @@ import type { Role } from '../types';
 interface ProtectedRouteProps {
   // Optional list of authorized roles that can load this route layout
   allowedRoles?: Role[];
+  // If true, user must have a store associated. Redirect to /create-store if not.
+  requireStore?: boolean;
+  // If true, user must not have a store associated. Redirect to /manage if they do.
+  requireNoStore?: boolean;
 }
 
 /**
@@ -18,9 +22,10 @@ interface ProtectedRouteProps {
  * 1. Shows a loading indicator if profile state verification is active.
  * 2. Redirects unauthenticated users to `/login`.
  * 3. Enforces Role-Based Access Control: redirects users lacking authority to `/dashboard`.
- * 4. Yields access to nested components via react-router-dom `<Outlet />` if checks succeed.
+ * 4. Checks store presence/absence for STORE_ADMIN.
+ * 5. Yields access to nested components via react-router-dom `<Outlet />` if checks succeed.
  */
-const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ allowedRoles, requireStore, requireNoStore }: ProtectedRouteProps) => {
   const { isAuthenticated, isLoading, user } = useAuth();
 
   // 1. Loading state placeholder
@@ -42,7 +47,17 @@ const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // 4. Render private children routes
+  // 4. Store-specific routing checks for STORE_ADMINs
+  if (user && user.role === 'STORE_ADMIN') {
+    if (requireStore && !user.storeId) {
+      return <Navigate to="/create-store" replace />;
+    }
+    if (requireNoStore && user.storeId) {
+      return <Navigate to="/manage" replace />;
+    }
+  }
+
+  // 5. Render private children routes
   return <Outlet />;
 };
 

@@ -4,6 +4,8 @@ import { env } from './config/env.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import storeRoutes from './modules/stores/store.routes.js';
 import userRoutes from './modules/users/user.routes.js';
+import productRoutes from './modules/products/product.routes.js';
+import storefrontRoutes from './modules/storefront/storefront.routes.js';
 import { errorHandler } from './middleware/error.middleware.js';
 
 // Initialize the Express application
@@ -29,6 +31,8 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/stores', storeRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/storefront', storefrontRoutes);
 
 // Basic health check endpoint to verify server status
 app.get('/api/health', (_, res) => {
