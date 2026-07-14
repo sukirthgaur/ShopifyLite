@@ -43,6 +43,8 @@ model Product {
   price     Float    // simplification for a learning MVP — use Decimal for real money
   imageUrl  String
   stock     Int      @default(0)
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+

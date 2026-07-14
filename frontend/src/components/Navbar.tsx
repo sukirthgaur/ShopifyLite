@@ -7,7 +7,7 @@ const Navbar = () => {
     <nav className="h-16 border-b border-gray-100 bg-white/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-40">
       <div className="flex items-center space-x-2">
         <span className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
-          Shopify Lite
+          {user?.role === 'STORE_ADMIN' && user.store?.name ? user.store.name : 'Shopify Lite'}
         </span>
         <span className="text-xs text-gray-400 font-medium px-2 py-0.5 bg-gray-50 border border-gray-100 rounded-md">
           MVP

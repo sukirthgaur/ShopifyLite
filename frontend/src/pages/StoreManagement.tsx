@@ -16,9 +16,9 @@ const StoreManagement = () => {
 
   // Products table states
   const [products, setProducts] = useState<Product[]>([]);
-  const [pagination, setPagination] = useState<PaginationMeta>({ page: 1, limit: 10, total: 0, totalPages: 0 });
   const [productsLoading, setProductsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [activeTab, setActiveTab] = useState<'active' | 'inactive'>('active');
 
   // Modals states
   const [modalOpen, setModalOpen] = useState(false);
@@ -32,6 +32,29 @@ const StoreManagement = () => {
   const [stock, setStock] = useState<number>(0);
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Client-side filtering and pagination calculations
+  const filteredProducts = products.filter(p => activeTab === 'active' ? p.isActive : !p.isActive);
+  const itemsPerPage = 10;
+  const totalItems = filteredProducts.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+
+  // Adjust page number if it goes out of range
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + itemsPerPage);
+
+  const paginationMeta: PaginationMeta = {
+    page: currentPage,
+    limit: itemsPerPage,
+    total: totalItems,
+    totalPages: totalPages
+  };
 
   const fetchStoreDetails = async () => {
     if (!user?.storeId) return;
@@ -49,9 +72,9 @@ const StoreManagement = () => {
   const fetchProducts = async () => {
     setProductsLoading(true);
     try {
-      const res = await productsApi.getProducts({ page: currentPage, limit: 10 });
+      // Fetch products list with a high limit for client-side filtering/stats
+      const res = await productsApi.getProducts({ page: 1, limit: 1000 });
       setProducts(res.data.products);
-      setPagination(res.data.pagination);
     } catch (err) {
       console.error('Error fetching products list', err);
     } finally {
@@ -65,7 +88,7 @@ const StoreManagement = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, [currentPage]);
+  }, []);
 
   const openCreateModal = () => {
     setModalType('create');
@@ -139,6 +162,15 @@ const StoreManagement = () => {
     }
   };
 
+  const handleToggleActive = async (product: Product) => {
+    try {
+      await productsApi.updateProduct(product.id, { isActive: !product.isActive });
+      fetchProducts();
+    } catch (err: any) {
+      alert(err?.message || 'Failed to update product status');
+    }
+  };
+
   const columns = [
     {
       header: 'Product details',
@@ -180,6 +212,16 @@ const StoreManagement = () => {
       header: 'Actions',
       accessor: (row: Product) => (
         <div className="flex space-x-2">
+          <button
+            onClick={() => handleToggleActive(row)}
+            className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+              row.isActive
+                ? 'text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100/80'
+                : 'text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100/80'
+            }`}
+          >
+            {row.isActive ? 'Deactivate' : 'Activate'}
+          </button>
           <button
             onClick={() => openEditModal(row)}
             className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100/80 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
@@ -239,6 +281,45 @@ const StoreManagement = () => {
         </div>
       )}
 
+      {/* Stats Summary Section */}
+      {!storeLoading && store && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Total Products</p>
+              <h3 className="text-3xl font-extrabold text-gray-950 mt-2">{products.length}</h3>
+            </div>
+            <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            </div>
+          </div>
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Active Products</p>
+              <h3 className="text-3xl font-extrabold text-emerald-600 mt-2">{products.filter(p => p.isActive).length}</h3>
+            </div>
+            <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Inactive Products</p>
+              <h3 className="text-3xl font-extrabold text-amber-600 mt-2">{products.filter(p => !p.isActive).length}</h3>
+            </div>
+            <div className="p-3 bg-amber-50 rounded-xl text-amber-600">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Bottom Section: Product Management */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -254,14 +335,38 @@ const StoreManagement = () => {
           </button>
         </div>
 
+        {/* Tabs for Active/Inactive */}
+        <div className="flex border-b border-gray-200">
+          <button
+            onClick={() => { setActiveTab('active'); setCurrentPage(1); }}
+            className={`px-6 py-3 text-sm font-medium border-b-2 cursor-pointer transition-colors duration-200 ${
+              activeTab === 'active'
+                ? 'border-emerald-600 text-emerald-600 font-semibold'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Active Products ({products.filter(p => p.isActive).length})
+          </button>
+          <button
+            onClick={() => { setActiveTab('inactive'); setCurrentPage(1); }}
+            className={`px-6 py-3 text-sm font-medium border-b-2 cursor-pointer transition-colors duration-200 ${
+              activeTab === 'inactive'
+                ? 'border-emerald-600 text-emerald-600 font-semibold'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Inactive Products ({products.filter(p => !p.isActive).length})
+          </button>
+        </div>
+
         <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
           <DataTable
             columns={columns}
-            data={products}
+            data={paginatedProducts}
             isLoading={productsLoading}
-            emptyMessage="No products seeded yet. Create your first product above."
+            emptyMessage={activeTab === 'active' ? "No active products." : "No inactive products."}
           />
-          <Pagination pagination={pagination} onPageChange={setCurrentPage} />
+          <Pagination pagination={paginationMeta} onPageChange={setCurrentPage} />
         </div>
       </div>
 

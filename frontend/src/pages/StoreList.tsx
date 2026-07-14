@@ -159,7 +159,7 @@ const StoreList = () => {
           </p>
         </div>
 
-        {((isSuper) || (!isSuper && !hasStore)) && (
+        {!isSuper && !hasStore && (
           <button
             onClick={openCreateModal}
             className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded-xl transition-all shadow-md shadow-emerald-500/10 cursor-pointer text-sm"

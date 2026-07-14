@@ -43,6 +43,7 @@ export interface Product {
   price: number;
   imageUrl: string;
   stock: number;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }

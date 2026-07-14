@@ -11,6 +11,9 @@ export const getStorefrontBySlug = async (slug: string) => {
     where: { slug },
     include: {
       products: {
+        where: {
+          isActive: true,
+        },
         select: {
           id: true,
           name: true,

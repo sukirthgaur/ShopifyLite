@@ -16,7 +16,9 @@ export const updateProductSchema = z.object({
   price: z.number().positive('Price must be a positive number').optional(),
   imageUrl: z.string().url('Image URL must be a valid URL').optional(),
   stock: z.number().int('Stock must be an integer').nonnegative('Stock cannot be negative').optional(),
+  isActive: z.boolean().optional(),
 });
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
+

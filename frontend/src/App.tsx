@@ -24,10 +24,9 @@ function App() {
           {/* Protected Dashboard Routes */}
           <Route element={<ProtectedRoute />}>
             <Route element={<DashboardLayout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              
               {/* SUPER_ADMIN only */}
               <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>
+                <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/stores" element={<StoreList />} />
                 <Route path="/users" element={<UserList />} />
               </Route>

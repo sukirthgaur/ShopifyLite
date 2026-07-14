@@ -6,21 +6,17 @@ const Sidebar = () => {
 
   // Define sidebar links dynamically based on user role
   const getLinks = () => {
-    const baseLinks = [
-      {
-        to: '/dashboard',
-        label: 'Dashboard',
-        icon: (
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-          </svg>
-        ),
-      },
-    ];
-
     if (user?.role === 'SUPER_ADMIN') {
       return [
-        ...baseLinks,
+        {
+          to: '/dashboard',
+          label: 'Dashboard',
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+          ),
+        },
         {
           to: '/stores',
           label: 'All Stores',
@@ -44,7 +40,6 @@ const Sidebar = () => {
 
     if (user?.role === 'STORE_ADMIN') {
       return [
-        ...baseLinks,
         {
           to: '/manage',
           label: 'My Store',
@@ -57,7 +52,7 @@ const Sidebar = () => {
       ];
     }
 
-    return baseLinks;
+    return [];
   };
 
   const links = getLinks();

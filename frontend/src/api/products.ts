@@ -14,7 +14,7 @@ export const getProducts = (params?: { page?: number; limit?: number }) =>
 export const getProductById = (id: string) =>
   client.get<ApiResponse<Product>, ApiResponse<Product>>(`/products/${id}`);
 
-export const updateProduct = (id: string, data: Partial<{ name: string; price: number; imageUrl: string; stock: number }>) =>
+export const updateProduct = (id: string, data: Partial<{ name: string; price: number; imageUrl: string; stock: number; isActive: boolean }>) =>
   client.put<ApiResponse<Product>, ApiResponse<Product>>(`/products/${id}`, data);
 
 export const deleteProduct = (id: string) =>

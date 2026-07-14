@@ -44,6 +44,9 @@ const ProtectedRoute = ({ allowedRoles, requireStore, requireNoStore }: Protecte
 
   // 3. Authority role verify check
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+    if (user.role === 'STORE_ADMIN') {
+      return <Navigate to={user.storeId ? "/manage" : "/create-store"} replace />;
+    }
     return <Navigate to="/dashboard" replace />;
   }
 
