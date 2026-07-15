@@ -51,7 +51,7 @@ export const getStores = async (caller: JwtPayload, pagination: PaginationQuery)
   const { page, limit } = pagination;
   const skip = (page - 1) * limit;
 
-  if (caller.role === 'SUPER_ADMIN') {
+  if (caller.role === 'SUPER_ADMIN' || caller.originalRole === 'SUPER_ADMIN') {
     const [stores, total] = await Promise.all([
       prisma.store.findMany({
         skip,

@@ -47,6 +47,7 @@ export const authenticate = async (req: Request, _res: Response, next: NextFunct
       userId: decoded.userId,
       role: user.role,
       storeId: user.storeId,
+      originalRole: user.role,
     };
 
     // If a SUPER_ADMIN wants to act as a store admin, override role and storeId for request scope

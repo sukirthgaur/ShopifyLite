@@ -13,6 +13,9 @@ export interface JwtPayload {
   
   // The tenant store associated with this merchant account. Null for SUPER_ADMINs.
   storeId: string | null;
+
+  // The actual database role before acting-as overrides
+  originalRole?: Role;
 }
 
 /**
