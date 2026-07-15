@@ -9,16 +9,25 @@ import DataTable from '../components/DataTable';
 import Pagination from '../components/Pagination';
 import Modal from '../components/Modal';
 import Toggle from '../components/Toggle';
-import Loader from '../components/Loader';
-import { uploadImage } from '../api/uploads';
 
 interface ProductFormValues {
   name: string;
   price: number;
   stock: number;
   categoryId: string | null;
-  images: { url: string }[];
+  images: { url: string; file: File | null; previewUrl: string }[];
 }
+
+export const getProductImageUrl = (url?: string) => {
+  if (!url) return 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=100';
+  if (url.startsWith('blob:') || url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  const backendUrl = import.meta.env.VITE_API_URL 
+    ? import.meta.env.VITE_API_URL.replace('/api', '') 
+    : 'http://localhost:5000';
+  return `${backendUrl}${url}`;
+};
 
 /**
  * Store Management Admin Dashboard Page
@@ -56,7 +65,7 @@ const StoreManagement = () => {
       price: 0,
       stock: 0,
       categoryId: '',
-      images: [{ url: '' }]
+      images: [{ url: '', file: null, previewUrl: '' }]
     }
   });
 
@@ -65,37 +74,20 @@ const StoreManagement = () => {
     name: 'images'
   });
 
-  // Track upload states (loading & errors) per field array row ID
-  const [uploadStates, setUploadStates] = useState<Record<string, { uploading: boolean; error: string | null }>>({});
-
-  const handleFileChange = async (index: number, fieldId: string, event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    setUploadStates((prev) => ({
-      ...prev,
-      [fieldId]: { uploading: true, error: null },
-    }));
-
-    try {
-      const res = await uploadImage(file);
-      if (res.success && res.data?.url) {
-        setValue(`images.${index}.url`, res.data.url);
-        setUploadStates((prev) => ({
-          ...prev,
-          [fieldId]: { uploading: false, error: null },
-        }));
-      } else {
-        throw new Error(res.message || 'Upload failed');
-      }
-    } catch (err: any) {
-      console.error('File upload error:', err);
-      const errorMsg = err?.message || err?.errors?.[0] || 'Upload failed. Please try again.';
-      setUploadStates((prev) => ({
-        ...prev,
-        [fieldId]: { uploading: false, error: errorMsg },
-      }));
+    // Check size limit (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size exceeds the 5MB limit.');
+      return;
     }
+
+    const previewUrl = URL.createObjectURL(file);
+    setValue(`images.${index}.file`, file);
+    setValue(`images.${index}.previewUrl`, previewUrl);
+    setValue(`images.${index}.url`, ''); // Clear URL to mark as new file
   };
 
   const watchedImages = watch('images');
@@ -179,10 +171,9 @@ const StoreManagement = () => {
       price: 0,
       stock: 0,
       categoryId: '',
-      images: [{ url: '' }]
+      images: [{ url: '', file: null, previewUrl: '' }]
     });
     setFormError(null);
-    setUploadStates({});
     setSelectedProduct(null);
     setModalOpen(true);
   };
@@ -194,10 +185,9 @@ const StoreManagement = () => {
       price: product.price,
       stock: product.stock,
       categoryId: product.categoryId || '',
-      images: product.images.map(url => ({ url }))
+      images: product.images.map(url => ({ url, file: null, previewUrl: url }))
     });
     setFormError(null);
-    setUploadStates({});
     setSelectedProduct(product);
     setModalOpen(true);
   };
@@ -227,26 +217,41 @@ const StoreManagement = () => {
       return;
     }
 
-    const imageUrls = values.images.map(img => img.url.trim()).filter(Boolean);
-    if (imageUrls.length === 0) {
-      setFormError('At least one valid uploaded image is required');
+    const hasNewImage = values.images.some(img => img.file);
+    const hasExistingImage = values.images.some(img => img.url);
+
+    if (!hasNewImage && !hasExistingImage) {
+      setFormError('At least one product image is required');
+      setIsSubmitting(false);
+      return;
+    }
+
+    const hasEmptyImageSlot = values.images.some(img => !img.file && !img.url);
+    if (hasEmptyImageSlot) {
+      setFormError('Please select a file or remove empty image slots');
       setIsSubmitting(false);
       return;
     }
 
     try {
-      const payload = {
-        name: values.name,
-        price: priceNum,
-        stock: stockNum,
-        categoryId: values.categoryId || null,
-        images: imageUrls
-      };
+      const formData = new FormData();
+      formData.append('name', values.name);
+      formData.append('price', String(priceNum));
+      formData.append('stock', String(stockNum));
+      formData.append('categoryId', values.categoryId || '');
+
+      values.images.forEach(img => {
+        if (img.file) {
+          formData.append('images', img.file);
+        } else if (img.url) {
+          formData.append('existingImages', img.url);
+        }
+      });
 
       if (modalType === 'create') {
-        await productsApi.createProduct(payload);
+        await productsApi.createProduct(formData);
       } else if (modalType === 'edit' && selectedProduct) {
-        await productsApi.updateProduct(selectedProduct.id, payload);
+        await productsApi.updateProduct(selectedProduct.id, formData);
       }
       setModalOpen(false);
       fetchProducts();
@@ -270,7 +275,9 @@ const StoreManagement = () => {
 
   const handleToggleActive = async (product: Product) => {
     try {
-      await productsApi.updateProduct(product.id, { isActive: !product.isActive });
+      const formData = new FormData();
+      formData.append('isActive', String(!product.isActive));
+      await productsApi.updateProduct(product.id, formData);
       fetchProducts();
     } catch (err: any) {
       alert(err?.message || 'Failed to update product status');
@@ -283,7 +290,7 @@ const StoreManagement = () => {
       accessor: (row: Product) => (
         <div className="flex items-center space-x-3">
           <img
-            src={row.images?.[0] || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=100'}
+            src={getProductImageUrl(row.images?.[0])}
             alt={row.name}
             className="w-10 h-10 object-cover rounded-lg border border-gray-100 bg-gray-50 flex-shrink-0"
             onError={(e) => {
@@ -565,32 +572,32 @@ const StoreManagement = () => {
 
           {/* Dynamic Images Field Array */}
           <div className="space-y-2">
-            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-              Product Images
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                Product Images
+              </label>
+              <button
+                type="button"
+                onClick={() => append({ url: '', file: null, previewUrl: '' })}
+                className="text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
+              >
+                + Add Image Slot
+              </button>
+            </div>
             <div className="space-y-3">
               {fields.map((field, index) => {
-                const currentUrl = watchedImages?.[index]?.url;
-                const state = uploadStates[field.id];
+                const imgVal = watchedImages?.[index];
+                const previewSrc = imgVal?.previewUrl || imgVal?.url;
+                const isNewFile = !!imgVal?.file;
 
                 return (
                   <div key={field.id} className="border border-gray-100 rounded-xl p-3 bg-gray-50/50 space-y-2">
-                    <input
-                      type="hidden"
-                      {...register(`images.${index}.url` as const, { required: 'Image is required' })}
-                    />
-                    
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex-1 flex items-center gap-3">
-                        {state?.uploading ? (
-                          <div className="flex items-center gap-2 text-sm text-gray-500 font-medium py-1.5">
-                            <Loader size="sm" />
-                            <span>Uploading image...</span>
-                          </div>
-                        ) : currentUrl ? (
+                        {previewSrc ? (
                           <div className="flex items-center gap-3">
                             <img
-                              src={currentUrl}
+                              src={getProductImageUrl(previewSrc)}
                               alt={`Product Preview ${index + 1}`}
                               className="w-14 h-14 object-cover rounded-lg border border-gray-200 bg-white"
                               onError={(e) => {
@@ -598,15 +605,12 @@ const StoreManagement = () => {
                               }}
                             />
                             <div className="flex flex-col min-w-0">
-                              <span className="text-xs font-semibold text-gray-700 truncate max-w-[200px]">Uploaded successfully</span>
-                              <a
-                                href={currentUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-[10px] text-emerald-600 hover:underline truncate max-w-[200px] font-mono"
-                              >
-                                {currentUrl}
-                              </a>
+                              <span className="text-xs font-semibold text-gray-700 truncate max-w-[200px]">
+                                {isNewFile ? 'Selected new file' : 'Current image'}
+                              </span>
+                              <span className="text-[10px] text-gray-400 truncate max-w-[200px] font-mono">
+                                {isNewFile ? imgVal.file?.name : imgVal.url}
+                              </span>
                             </div>
                           </div>
                         ) : (
@@ -618,19 +622,11 @@ const StoreManagement = () => {
                                   type="file"
                                   accept="image/jpeg,image/png,image/webp"
                                   className="sr-only"
-                                  onChange={(e) => handleFileChange(index, field.id, e)}
+                                  onChange={(e) => handleFileChange(index, e)}
                                 />
                               </label>
                               <span className="text-[11px] text-gray-400">JPEG, PNG, or WEBP (Max 5MB)</span>
                             </div>
-                            {state?.error && (
-                              <div className="text-xs font-semibold text-rose-600 mt-1 flex items-center gap-1.5">
-                                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
-                                <span>{state.error}</span>
-                              </div>
-                            )}
                           </div>
                         )}
                       </div>
@@ -649,13 +645,6 @@ const StoreManagement = () => {
                 );
               })}
             </div>
-            <button
-              type="button"
-              onClick={() => append({ url: '' })}
-              className="mt-2 text-xs font-semibold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100/80 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-            >
-              + Add Image
-            </button>
           </div>
 
           <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">

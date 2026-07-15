@@ -19,6 +19,17 @@ interface PublicStorefront {
   products: PublicProduct[];
 }
 
+export const getProductImageUrl = (url?: string) => {
+  if (!url) return 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500';
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  const backendUrl = import.meta.env.VITE_API_URL 
+    ? import.meta.env.VITE_API_URL.replace('/api', '') 
+    : 'http://localhost:5000';
+  return `${backendUrl}${url}`;
+};
+
 /**
  * Public Storefront Catalog View Page
  * Accessible anonymously. Renders active categories, filtering, and products with carousel modal.
@@ -184,7 +195,7 @@ const Storefront = () => {
                 {/* Product Image */}
                 <div className="aspect-square bg-gray-50 overflow-hidden relative border-b border-gray-5 group-hover:opacity-95 transition-opacity">
                   <img
-                    src={product.images[0] || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500'}
+                    src={getProductImageUrl(product.images[0])}
                     alt={product.name}
                     className="w-full h-full object-cover"
                     onError={(e) => {
@@ -234,7 +245,7 @@ const Storefront = () => {
             {/* Carousel Container */}
             <div className="relative aspect-square w-full rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 flex items-center justify-center">
               <img
-                src={selectedProduct.images[carouselIndex] || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500'}
+                src={getProductImageUrl(selectedProduct.images[carouselIndex])}
                 alt={`${selectedProduct.name} - image ${carouselIndex + 1}`}
                 className="w-full h-full object-cover transition-all duration-300"
               />
