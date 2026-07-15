@@ -29,6 +29,17 @@ const envSchema = z.object({
   
   // Frontend client origin URL to configure CORS permissions (defaults to local Vite port)
   FRONTEND_URL: z.string().default('http://localhost:5173'),
+
+  // Cloudinary configuration credentials
+  CLOUDINARY_CLOUD_NAME: z.string({
+    required_error: 'CLOUDINARY_CLOUD_NAME environment variable is required',
+  }),
+  CLOUDINARY_API_KEY: z.string({
+    required_error: 'CLOUDINARY_API_KEY environment variable is required',
+  }),
+  CLOUDINARY_API_SECRET: z.string({
+    required_error: 'CLOUDINARY_API_SECRET environment variable is required',
+  }),
 });
 
 // Parse and validate current process.env. Throws if validation fails.

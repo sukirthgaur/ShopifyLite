@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
 import { Prisma } from '@prisma/client';
+import multer from 'multer';
 import { ApiError } from '../utils/ApiError.js';
 
 /**
@@ -25,6 +26,23 @@ export const errorHandler = (
       success: false,
       message: err.message,
       errors: err.errors,
+    });
+    return;
+  }
+
+  // 1.5. Handle Multer errors (e.g. file size limits, invalid upload field names)
+  if (err instanceof multer.MulterError) {
+    let errorMessage = err.message;
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      errorMessage = 'File too large. Maximum size is 5 MB.';
+    } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      errorMessage = 'Unexpected file field.';
+    }
+    
+    res.status(400).json({
+      success: false,
+      message: errorMessage,
+      errors: [],
     });
     return;
   }

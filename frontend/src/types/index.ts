@@ -134,6 +134,7 @@ export interface StorefrontResponse {
     price: number;
     images: string[];
     categoryId: string | null;
+    stock: number;
   }[];
 }
 

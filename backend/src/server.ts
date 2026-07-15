@@ -7,6 +7,7 @@ import userRoutes from './modules/users/user.routes.js';
 import productRoutes from './modules/products/product.routes.js';
 import storefrontRoutes from './modules/storefront/storefront.routes.js';
 import categoryRoutes from './modules/categories/category.routes.js';
+import uploadRoutes from './modules/uploads/upload.routes.js';
 import { errorHandler } from './middleware/error.middleware.js';
 
 // Initialize the Express application
@@ -35,6 +36,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/storefront', storefrontRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/uploads', uploadRoutes);
 
 
 // Basic health check endpoint to verify server status

@@ -30,6 +30,19 @@ const Navbar = () => {
     loadStores();
   }, [isSuper]);
 
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (dropdownOpen && !(e.target as Element).closest('#store-selector-dropdown')) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [dropdownOpen]);
+
   const handleStoreChange = (storeId: string) => {
     if (storeId === 'none') {
       setActingStoreId(null);
@@ -46,19 +59,63 @@ const Navbar = () => {
       {/* Top Left Area - Brand Logo / Super Admin Store Selector */}
       <div className="flex items-center space-x-3">
         {isSuper ? (
-          <div className="flex items-center space-x-2">
-            <select
-              value={actingStoreId || 'none'}
-              onChange={(e) => handleStoreChange(e.target.value)}
-              className="px-3.5 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-bold text-gray-900 bg-white shadow-sm cursor-pointer"
+          <div className="relative" id="store-selector-dropdown">
+            <button
+              type="button"
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+              className="flex items-center justify-between gap-2 px-4 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-bold text-gray-900 bg-white shadow-sm hover:bg-gray-50 transition-all cursor-pointer min-w-[240px]"
             >
-              <option value="none">Shopify Lite (Super Admin)</option>
-              {stores.map((s) => (
-                <option key={s.id} value={s.id}>
-                  🏬 {s.name}
-                </option>
-              ))}
-            </select>
+              <span className="truncate">
+                {actingStoreId 
+                  ? `🏬 ${stores.find(s => s.id === actingStoreId)?.name || 'Acting Store'}` 
+                  : '🛡️ Shopify Lite (Super Admin)'}
+              </span>
+              <svg 
+                className={`w-4 h-4 text-gray-400 transition-transform duration-250 ${dropdownOpen ? 'rotate-180' : ''}`} 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {dropdownOpen && (
+              <div className="absolute left-0 mt-2 w-64 bg-white/95 backdrop-blur-md border border-gray-100 rounded-2xl shadow-xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleStoreChange('none');
+                    setDropdownOpen(false);
+                  }}
+                  className={`w-full text-left px-4 py-2.5 text-xs font-bold hover:bg-emerald-50 hover:text-emerald-700 transition-colors flex items-center gap-2 cursor-pointer ${
+                    !actingStoreId ? 'bg-emerald-50/50 text-emerald-700' : 'text-gray-600'
+                  }`}
+                >
+                  🛡️ Shopify Lite (Super Admin)
+                </button>
+                
+                <div className="h-px bg-gray-100 my-1" />
+                
+                <div className="max-h-60 overflow-y-auto">
+                  {stores.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => {
+                        handleStoreChange(s.id);
+                        setDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-4 py-2.5 text-xs font-semibold hover:bg-emerald-50 hover:text-emerald-700 transition-colors flex items-center gap-2 cursor-pointer ${
+                        actingStoreId === s.id ? 'bg-emerald-50/50 text-emerald-700' : 'text-gray-600'
+                      }`}
+                    >
+                      🏬 {s.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <>

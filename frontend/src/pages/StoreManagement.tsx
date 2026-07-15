@@ -9,6 +9,8 @@ import DataTable from '../components/DataTable';
 import Pagination from '../components/Pagination';
 import Modal from '../components/Modal';
 import Toggle from '../components/Toggle';
+import Loader from '../components/Loader';
+import { uploadImage } from '../api/uploads';
 
 interface ProductFormValues {
   name: string;
@@ -48,7 +50,7 @@ const StoreManagement = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // React Hook Form for Product Form with useFieldArray for multiple images
-  const { register, control, handleSubmit, reset } = useForm<ProductFormValues>({
+  const { register, control, handleSubmit, reset, setValue, watch } = useForm<ProductFormValues>({
     defaultValues: {
       name: '',
       price: 0,
@@ -62,6 +64,41 @@ const StoreManagement = () => {
     control,
     name: 'images'
   });
+
+  // Track upload states (loading & errors) per field array row ID
+  const [uploadStates, setUploadStates] = useState<Record<string, { uploading: boolean; error: string | null }>>({});
+
+  const handleFileChange = async (index: number, fieldId: string, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadStates((prev) => ({
+      ...prev,
+      [fieldId]: { uploading: true, error: null },
+    }));
+
+    try {
+      const res = await uploadImage(file);
+      if (res.success && res.data?.url) {
+        setValue(`images.${index}.url`, res.data.url);
+        setUploadStates((prev) => ({
+          ...prev,
+          [fieldId]: { uploading: false, error: null },
+        }));
+      } else {
+        throw new Error(res.message || 'Upload failed');
+      }
+    } catch (err: any) {
+      console.error('File upload error:', err);
+      const errorMsg = err?.message || err?.errors?.[0] || 'Upload failed. Please try again.';
+      setUploadStates((prev) => ({
+        ...prev,
+        [fieldId]: { uploading: false, error: errorMsg },
+      }));
+    }
+  };
+
+  const watchedImages = watch('images');
 
   // Client-side filtering and pagination calculations
   const filteredProducts = products.filter(p => {
@@ -133,7 +170,7 @@ const StoreManagement = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [user?.storeId]);
 
   const openCreateModal = () => {
     setModalType('create');
@@ -145,6 +182,7 @@ const StoreManagement = () => {
       images: [{ url: '' }]
     });
     setFormError(null);
+    setUploadStates({});
     setSelectedProduct(null);
     setModalOpen(true);
   };
@@ -159,6 +197,7 @@ const StoreManagement = () => {
       images: product.images.map(url => ({ url }))
     });
     setFormError(null);
+    setUploadStates({});
     setSelectedProduct(product);
     setModalOpen(true);
   };
@@ -190,7 +229,7 @@ const StoreManagement = () => {
 
     const imageUrls = values.images.map(img => img.url.trim()).filter(Boolean);
     if (imageUrls.length === 0) {
-      setFormError('At least one valid image URL is required');
+      setFormError('At least one valid uploaded image is required');
       setIsSubmitting(false);
       return;
     }
@@ -265,7 +304,7 @@ const StoreManagement = () => {
     {
       header: 'Price',
       accessor: (row: Product) => (
-        <span className="font-mono font-medium text-gray-900">${row.price.toFixed(2)}</span>
+        <span className="font-mono font-medium text-gray-900">₹{row.price.toFixed(2)}</span>
       ),
     },
     {
@@ -482,7 +521,7 @@ const StoreManagement = () => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
-                Price ($ USD)
+                Price (₹ INR)
               </label>
               <input
                 type="number"
@@ -529,33 +568,93 @@ const StoreManagement = () => {
             <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
               Product Images
             </label>
-            <div className="space-y-2">
-              {fields.map((field, index) => (
-                <div key={field.id} className="flex gap-2">
-                  <input
-                    type="url"
-                    {...register(`images.${index}.url` as const, { required: 'Image URL is required' })}
-                    placeholder="https://images.unsplash.com/..."
-                    className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm text-gray-950 font-mono"
-                  />
-                  {fields.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => remove(index)}
-                      className="px-3 py-2 text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-lg text-sm transition-all font-semibold cursor-pointer"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              ))}
+            <div className="space-y-3">
+              {fields.map((field, index) => {
+                const currentUrl = watchedImages?.[index]?.url;
+                const state = uploadStates[field.id];
+
+                return (
+                  <div key={field.id} className="border border-gray-100 rounded-xl p-3 bg-gray-50/50 space-y-2">
+                    <input
+                      type="hidden"
+                      {...register(`images.${index}.url` as const, { required: 'Image is required' })}
+                    />
+                    
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex-1 flex items-center gap-3">
+                        {state?.uploading ? (
+                          <div className="flex items-center gap-2 text-sm text-gray-500 font-medium py-1.5">
+                            <Loader size="sm" />
+                            <span>Uploading image...</span>
+                          </div>
+                        ) : currentUrl ? (
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={currentUrl}
+                              alt={`Product Preview ${index + 1}`}
+                              className="w-14 h-14 object-cover rounded-lg border border-gray-200 bg-white"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=100';
+                              }}
+                            />
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-xs font-semibold text-gray-700 truncate max-w-[200px]">Uploaded successfully</span>
+                              <a
+                                href={currentUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[10px] text-emerald-600 hover:underline truncate max-w-[200px] font-mono"
+                              >
+                                {currentUrl}
+                              </a>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="w-full">
+                            <div className="flex items-center gap-2">
+                              <label className="relative flex items-center justify-center px-4 py-2 border border-dashed border-gray-300 rounded-lg bg-white text-xs font-semibold text-emerald-600 hover:text-emerald-700 hover:border-emerald-500 cursor-pointer transition-all">
+                                <span>Select Image File</span>
+                                <input
+                                  type="file"
+                                  accept="image/jpeg,image/png,image/webp"
+                                  className="sr-only"
+                                  onChange={(e) => handleFileChange(index, field.id, e)}
+                                />
+                              </label>
+                              <span className="text-[11px] text-gray-400">JPEG, PNG, or WEBP (Max 5MB)</span>
+                            </div>
+                            {state?.error && (
+                              <div className="text-xs font-semibold text-rose-600 mt-1 flex items-center gap-1.5">
+                                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <span>{state.error}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {fields.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => remove(index)}
+                          className="text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-lg px-3 py-1.5 transition-all cursor-pointer"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             <button
               type="button"
               onClick={() => append({ url: '' })}
               className="mt-2 text-xs font-semibold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100/80 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
             >
-              + Add Image URL
+              + Add Image
             </button>
           </div>
 

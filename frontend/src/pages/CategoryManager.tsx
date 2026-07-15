@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 import * as categoriesApi from '../api/categories';
 import type { Category } from '../types';
 import DataTable from '../components/DataTable';
@@ -10,6 +11,7 @@ import Toggle from '../components/Toggle';
  * Provides full scoped CRUD interface for categories.
  */
 const CategoryManager = () => {
+  const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -37,7 +39,7 @@ const CategoryManager = () => {
 
   useEffect(() => {
     fetchCategories();
-  }, []);
+  }, [user?.storeId]);
 
   const openCreateModal = () => {
     setModalType('create');

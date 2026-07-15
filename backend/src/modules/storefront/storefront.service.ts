@@ -32,6 +32,7 @@ export const getStorefrontBySlug = async (slug: string) => {
           price: true,
           images: true,
           categoryId: true,
+          stock: true,
         },
       },
     },

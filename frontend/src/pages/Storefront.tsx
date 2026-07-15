@@ -10,6 +10,7 @@ interface PublicProduct {
   price: number;
   images: string[];
   categoryId: string | null;
+  stock: number;
 }
 
 interface PublicStorefront {
@@ -30,6 +31,7 @@ const Storefront = () => {
 
   // Category selection and modal carousel states
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [onlyInStock, setOnlyInStock] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<PublicProduct | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
@@ -67,7 +69,11 @@ const Storefront = () => {
   };
 
   const filteredProducts = storefront
-    ? storefront.products.filter(p => selectedCategory === 'all' || p.categoryId === selectedCategory)
+    ? storefront.products.filter(p => {
+        const matchesCategory = selectedCategory === 'all' || p.categoryId === selectedCategory;
+        const matchesStock = !onlyInStock || p.stock > 0;
+        return matchesCategory && matchesStock;
+      })
     : [];
 
   if (loading) {
@@ -116,34 +122,51 @@ const Storefront = () => {
       {/* Main Catalog View */}
       <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-12 space-y-8">
         
-        {/* Category Chips Filters */}
-        {storefront.categories.length > 0 && (
-          <div className="flex flex-wrap gap-2 justify-center border-b border-gray-100 pb-6">
-            <button
-              onClick={() => setSelectedCategory('all')}
-              className={`px-4 py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
-                selectedCategory === 'all'
-                  ? 'bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-500/10'
-                  : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-900'
-              }`}
-            >
-              All Items
-            </button>
-            {storefront.categories.map((cat) => (
+        {/* Category Chips Filters & Controls */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-gray-100 pb-6 gap-4">
+          {storefront.categories.length > 0 ? (
+            <div className="flex flex-wrap gap-2 justify-center md:justify-start">
               <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
+                onClick={() => setSelectedCategory('all')}
                 className={`px-4 py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
-                  selectedCategory === cat.id
+                  selectedCategory === 'all'
                     ? 'bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-500/10'
                     : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-900'
                 }`}
               >
-                {cat.name}
+                All Items
               </button>
-            ))}
+              {storefront.categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`px-4 py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                    selectedCategory === cat.id
+                      ? 'bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-500/10'
+                      : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-900'
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div />
+          )}
+
+          {/* In Stock Filter Checkbox */}
+          <div className="flex items-center justify-center space-x-2">
+            <label className="relative flex items-center gap-2 cursor-pointer text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl px-4 py-2 hover:bg-gray-50 transition-all select-none shadow-sm">
+              <input
+                type="checkbox"
+                checked={onlyInStock}
+                onChange={(e) => setOnlyInStock(e.target.checked)}
+                className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 focus:ring-emerald-500/20 cursor-pointer"
+              />
+              <span>In Stock Only</span>
+            </label>
           </div>
-        )}
+        </div>
 
         {filteredProducts.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-3xl border border-gray-100 p-8">
@@ -181,11 +204,17 @@ const Storefront = () => {
                   </h3>
                   <div className="flex items-center justify-between pt-1">
                     <span className="text-lg font-extrabold text-gray-950 font-mono">
-                      ${product.price.toFixed(2)}
+                      ₹{product.price.toFixed(2)}
                     </span>
-                    <span className="text-[10px] text-emerald-600 bg-emerald-50 font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
-                      In stock
-                    </span>
+                    {product.stock > 0 ? (
+                      <span className="text-[10px] text-emerald-600 bg-emerald-50 font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
+                        In stock
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-rose-600 bg-rose-50 font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
+                        Out of stock
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -257,11 +286,17 @@ const Storefront = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-2xl font-extrabold text-gray-950 font-mono">
-                  ${selectedProduct.price.toFixed(2)}
+                  ₹{selectedProduct.price.toFixed(2)}
                 </span>
-                <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
-                  Ready to Order
-                </span>
+                {selectedProduct.stock > 0 ? (
+                  <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
+                    Ready to Order
+                  </span>
+                ) : (
+                  <span className="text-xs font-semibold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-100">
+                    Out of Stock
+                  </span>
+                )}
               </div>
               <p className="text-sm text-gray-500 leading-relaxed">
                 Add premium style and function to your collection. This high-quality {selectedProduct.name} is now available in our catalog.
