@@ -23,6 +23,10 @@ client.interceptors.request.use((config) => {
     // Standard Authorization header with Bearer token schema
     config.headers.Authorization = `Bearer ${token}`;
   }
+  const actingStoreId = localStorage.getItem('actingStoreId');
+  if (actingStoreId) {
+    config.headers['x-act-as-store-id'] = actingStoreId;
+  }
   return config;
 });
 

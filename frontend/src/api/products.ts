@@ -5,7 +5,7 @@ import type { ApiResponse, Product, ProductListResponse } from '../types';
  * Products Module API Client functions
  */
 
-export const createProduct = (data: { name: string; price: number; imageUrl: string; stock: number }) =>
+export const createProduct = (data: { name: string; price: number; images: string[]; stock: number; categoryId?: string | null }) =>
   client.post<ApiResponse<Product>, ApiResponse<Product>>('/products', data);
 
 export const getProducts = (params?: { page?: number; limit?: number }) =>
@@ -14,8 +14,9 @@ export const getProducts = (params?: { page?: number; limit?: number }) =>
 export const getProductById = (id: string) =>
   client.get<ApiResponse<Product>, ApiResponse<Product>>(`/products/${id}`);
 
-export const updateProduct = (id: string, data: Partial<{ name: string; price: number; imageUrl: string; stock: number; isActive: boolean }>) =>
+export const updateProduct = (id: string, data: Partial<{ name: string; price: number; images: string[]; stock: number; isActive: boolean; categoryId?: string | null }>) =>
   client.put<ApiResponse<Product>, ApiResponse<Product>>(`/products/${id}`, data);
+
 
 export const deleteProduct = (id: string) =>
   client.delete<ApiResponse<null>, ApiResponse<null>>(`/products/${id}`);

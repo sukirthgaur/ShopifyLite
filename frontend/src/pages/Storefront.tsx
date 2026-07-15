@@ -2,24 +2,37 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import * as storefrontApi from '../api/storefront';
 import Loader from '../components/Loader';
+import Modal from '../components/Modal';
 
 interface PublicProduct {
   id: string;
   name: string;
   price: number;
-  imageUrl: string;
+  images: string[];
+  categoryId: string | null;
 }
 
 interface PublicStorefront {
   storeName: string;
+  categories: { id: string; name: string }[];
   products: PublicProduct[];
 }
 
+/**
+ * Public Storefront Catalog View Page
+ * Accessible anonymously. Renders active categories, filtering, and products with carousel modal.
+ */
 const Storefront = () => {
   const { slug } = useParams<{ slug: string }>();
   const [storefront, setStorefront] = useState<PublicStorefront | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Category selection and modal carousel states
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedProduct, setSelectedProduct] = useState<PublicProduct | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [carouselIndex, setCarouselIndex] = useState(0);
 
   useEffect(() => {
     const fetchStorefront = async () => {
@@ -38,6 +51,24 @@ const Storefront = () => {
 
     fetchStorefront();
   }, [slug]);
+
+  const openProductModal = (product: PublicProduct) => {
+    setSelectedProduct(product);
+    setCarouselIndex(0);
+    setModalOpen(true);
+  };
+
+  const nextImage = (imagesLength: number) => {
+    setCarouselIndex((prev) => (prev + 1) % imagesLength);
+  };
+
+  const prevImage = (imagesLength: number) => {
+    setCarouselIndex((prev) => (prev - 1 + imagesLength) % imagesLength);
+  };
+
+  const filteredProducts = storefront
+    ? storefront.products.filter(p => selectedCategory === 'all' || p.categoryId === selectedCategory)
+    : [];
 
   if (loading) {
     return (
@@ -83,29 +114,65 @@ const Storefront = () => {
       </header>
 
       {/* Main Catalog View */}
-      <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-12">
-        {storefront.products.length === 0 ? (
+      <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-12 space-y-8">
+        
+        {/* Category Chips Filters */}
+        {storefront.categories.length > 0 && (
+          <div className="flex flex-wrap gap-2 justify-center border-b border-gray-100 pb-6">
+            <button
+              onClick={() => setSelectedCategory('all')}
+              className={`px-4 py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                selectedCategory === 'all'
+                  ? 'bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-500/10'
+                  : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-900'
+              }`}
+            >
+              All Items
+            </button>
+            {storefront.categories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id)}
+                className={`px-4 py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                  selectedCategory === cat.id
+                    ? 'bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-500/10'
+                    : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-900'
+                }`}
+              >
+                {cat.name}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {filteredProducts.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-3xl border border-gray-100 p-8">
             <p className="text-base font-semibold text-gray-700">No items available</p>
-            <p className="text-sm text-gray-400 mt-1">This store has not listed any catalog items yet.</p>
+            <p className="text-sm text-gray-400 mt-1">This store has not listed any catalog items for this selection yet.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {storefront.products.map((product) => (
+            {filteredProducts.map((product) => (
               <div
                 key={product.id}
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col"
+                onClick={() => openProductModal(product)}
+                className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col cursor-pointer hover:shadow-md hover:border-gray-200/80 transition-all duration-200 group"
               >
                 {/* Product Image */}
-                <div className="aspect-square bg-gray-50 overflow-hidden relative border-b border-gray-50">
+                <div className="aspect-square bg-gray-50 overflow-hidden relative border-b border-gray-5 group-hover:opacity-95 transition-opacity">
                   <img
-                    src={product.imageUrl}
+                    src={product.images[0] || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500'}
                     alt={product.name}
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500';
                     }}
                   />
+                  {product.images.length > 1 && (
+                    <span className="absolute top-2 right-2 bg-black/60 text-[10px] text-white font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
+                      {product.images.length} images
+                    </span>
+                  )}
                 </div>
                 {/* Details */}
                 <div className="p-4 flex-1 flex flex-col justify-between space-y-2">
@@ -116,8 +183,8 @@ const Storefront = () => {
                     <span className="text-lg font-extrabold text-gray-950 font-mono">
                       ${product.price.toFixed(2)}
                     </span>
-                    <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
-                      Instock
+                    <span className="text-[10px] text-emerald-600 bg-emerald-50 font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
+                      In stock
                     </span>
                   </div>
                 </div>
@@ -126,6 +193,83 @@ const Storefront = () => {
           </div>
         )}
       </main>
+
+      {/* Product Detail Modal with Custom Image Carousel */}
+      {selectedProduct && (
+        <Modal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          title={selectedProduct.name}
+        >
+          <div className="space-y-6">
+            {/* Carousel Container */}
+            <div className="relative aspect-square w-full rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 flex items-center justify-center">
+              <img
+                src={selectedProduct.images[carouselIndex] || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500'}
+                alt={`${selectedProduct.name} - image ${carouselIndex + 1}`}
+                className="w-full h-full object-cover transition-all duration-300"
+              />
+
+              {/* Prev/Next Controls */}
+              {selectedProduct.images.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      prevImage(selectedProduct.images.length);
+                    }}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/90 hover:bg-white shadow-md border border-gray-100 text-gray-700 transition-all cursor-pointer flex items-center justify-center focus:outline-none"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      nextImage(selectedProduct.images.length);
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/90 hover:bg-white shadow-md border border-gray-100 text-gray-700 transition-all cursor-pointer flex items-center justify-center focus:outline-none"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+
+                  {/* Indicator dots */}
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex space-x-1.5 bg-black/30 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                    {selectedProduct.images.map((_, i) => (
+                      <span
+                        key={i}
+                        className={`block h-1.5 w-1.5 rounded-full transition-all ${
+                          carouselIndex === i ? 'bg-white scale-125' : 'bg-white/50'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Price & Description */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-extrabold text-gray-950 font-mono">
+                  ${selectedProduct.price.toFixed(2)}
+                </span>
+                <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
+                  Ready to Order
+                </span>
+              </div>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                Add premium style and function to your collection. This high-quality {selectedProduct.name} is now available in our catalog.
+              </p>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* Footer */}
       <footer className="bg-white border-t border-gray-100 py-8 px-6 text-center text-xs text-gray-400">

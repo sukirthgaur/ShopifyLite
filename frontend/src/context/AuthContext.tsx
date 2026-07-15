@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import * as authApi from '../api/auth';
-import type { User } from '../types';
+import type { User, Role } from '../types';
 
 /**
  * Authentication Context Type definition
@@ -17,6 +17,9 @@ interface AuthContextType {
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
+  actingStoreId: string | null;
+  setActingStoreId: (storeId: string | null) => void;
+  originalRole: Role | null;
 }
 
 // React Context instance initialization
@@ -32,10 +35,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [isLoading, setIsLoading] = useState(true);
 
+  // Store acting ID in state and local storage
+  const [actingStoreId, setActingStoreIdState] = useState<string | null>(localStorage.getItem('actingStoreId'));
+
+  const setActingStoreId = (storeId: string | null) => {
+    if (storeId) {
+      localStorage.setItem('actingStoreId', storeId);
+    } else {
+      localStorage.removeItem('actingStoreId');
+    }
+    setActingStoreIdState(storeId);
+  };
+
+  const originalRole = user?.role || null;
+
+  // Derive effective user context if acting as a store
+  const effectiveUser = user && actingStoreId && user.role === 'SUPER_ADMIN' ? {
+    ...user,
+    role: 'STORE_ADMIN' as const,
+    storeId: actingStoreId,
+  } : user;
+
   // Derived auth state helpers
-  const isAuthenticated = !!user && !!token;
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const isStoreAdmin = user?.role === 'STORE_ADMIN';
+  const isAuthenticated = !!effectiveUser && !!token;
+  const isSuperAdmin = effectiveUser?.role === 'SUPER_ADMIN';
+  const isStoreAdmin = effectiveUser?.role === 'STORE_ADMIN';
 
   /**
    * Refreshes the currently authenticated user's profile metadata from the backend.
@@ -49,6 +73,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(null);
       setToken(null);
       localStorage.removeItem('token');
+      localStorage.removeItem('actingStoreId');
+      setActingStoreIdState(null);
     }
   }, []);
 
@@ -67,6 +93,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(null);
           setToken(null);
           localStorage.removeItem('token');
+          localStorage.removeItem('actingStoreId');
+          setActingStoreIdState(null);
         }
       }
       setIsLoading(false);
@@ -104,15 +132,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
    */
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('actingStoreId');
     setUser(null);
     setToken(null);
+    setActingStoreIdState(null);
     window.location.href = '/login';
   };
 
   return (
     <AuthContext.Provider
       value={{
-        user,
+        user: effectiveUser,
         token,
         isLoading,
         isAuthenticated,
@@ -122,6 +152,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         register,
         logout,
         refreshProfile,
+        actingStoreId,
+        setActingStoreId,
+        originalRole,
       }}
     >
       {children}

@@ -39,14 +39,16 @@ export interface Store {
 export interface Product {
   id: string;
   storeId: string;
+  categoryId: string | null;
   name: string;
   price: number;
-  imageUrl: string;
+  images: string[];
   stock: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
+
 
 /**
  * Standard Pagination Metadata Model
@@ -108,15 +110,30 @@ export interface ProductListResponse {
   pagination: PaginationMeta;
 }
 
+export interface Category {
+  id: string;
+  storeId: string;
+  name: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /**
  * Public Storefront response
  */
 export interface StorefrontResponse {
   storeName: string;
+  categories: {
+    id: string;
+    name: string;
+  }[];
   products: {
     id: string;
     name: string;
     price: number;
-    imageUrl: string;
+    images: string[];
+    categoryId: string | null;
   }[];
 }
+

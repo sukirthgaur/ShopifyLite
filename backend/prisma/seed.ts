@@ -9,11 +9,13 @@ const SALT_ROUNDS = 10;
 
 /**
  * Main seeding function.
- * We use `upsert` queries to make the seed script idempotent.
- * This means we can run this script multiple times without duplicate record conflicts.
+ * We clean the database first, then insert initial data.
  */
 async function main() {
-  
+  // Clean up all existing dynamic data to handle breaking schema changes and prevent compound constraint failures
+  await prisma.product.deleteMany();
+  await prisma.category.deleteMany();
+
   // 1. Create a default Super Admin user account (who oversees all stores and merchants)
   const superAdminPassword = await bcrypt.hash('SuperAdmin123!', SALT_ROUNDS);
   await prisma.user.upsert({
@@ -79,82 +81,131 @@ async function main() {
     },
   });
 
-  // 6. Seed products for Store Alpha
+  // 6. Create Categories for both stores
+  const alphaCategory1 = await prisma.category.create({
+    data: {
+      storeId: storeAlpha.id,
+      name: 'Apparel',
+      isActive: true,
+    },
+  });
+
+  const alphaCategory2 = await prisma.category.create({
+    data: {
+      storeId: storeAlpha.id,
+      name: 'Accessories',
+      isActive: true,
+    },
+  });
+
+  const betaCategory1 = await prisma.category.create({
+    data: {
+      storeId: storeBeta.id,
+      name: 'Footwear',
+      isActive: true,
+    },
+  });
+
+  const betaCategory2 = await prisma.category.create({
+    data: {
+      storeId: storeBeta.id,
+      name: 'Gear',
+      isActive: true,
+    },
+  });
+
+  // 7. Seed products for Store Alpha
   const alphaProducts = [
     {
       name: 'Alpha T-Shirt',
       price: 25.00,
-      imageUrl: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500',
+      images: [
+        'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500',
+        'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=500',
+      ],
       stock: 100,
+      categoryId: alphaCategory1.id,
     },
     {
       name: 'Alpha Hoodie',
       price: 55.00,
-      imageUrl: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=500',
+      images: [
+        'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=500',
+        'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=500',
+      ],
       stock: 50,
+      categoryId: alphaCategory1.id,
     },
     {
       name: 'Alpha Mug',
       price: 15.00,
-      imageUrl: 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=500',
+      images: [
+        'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=500',
+        'https://images.unsplash.com/photo-1572119363156-23b1e8a93ac0?w=500',
+      ],
       stock: 200,
+      categoryId: alphaCategory2.id,
     },
   ];
 
   for (const prod of alphaProducts) {
-    const existing = await prisma.product.findFirst({
-      where: { storeId: storeAlpha.id, name: prod.name },
+    await prisma.product.create({
+      data: {
+        storeId: storeAlpha.id,
+        categoryId: prod.categoryId,
+        name: prod.name,
+        price: prod.price,
+        images: prod.images,
+        stock: prod.stock,
+      },
     });
-    if (!existing) {
-      await prisma.product.create({
-        data: {
-          storeId: storeAlpha.id,
-          name: prod.name,
-          price: prod.price,
-          imageUrl: prod.imageUrl,
-          stock: prod.stock,
-        },
-      });
-    }
   }
 
-  // 7. Seed products for Store Beta
+  // 8. Seed products for Store Beta
   const betaProducts = [
     {
       name: 'Beta Sneaker',
       price: 120.00,
-      imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500',
+      images: [
+        'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500',
+        'https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=500',
+      ],
       stock: 30,
+      categoryId: betaCategory1.id,
     },
     {
       name: 'Beta Backpack',
       price: 80.00,
-      imageUrl: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500',
+      images: [
+        'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500',
+        'https://images.unsplash.com/photo-1622560480605-d83c853bc5c3?w=500',
+      ],
       stock: 40,
+      categoryId: betaCategory2.id,
     },
     {
       name: 'Beta Cap',
       price: 20.00,
-      imageUrl: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=500',
+      images: [
+        'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=500',
+        'https://images.unsplash.com/photo-1534215754734-18e55d13ce3a?w=500',
+      ],
       stock: 150,
+      categoryId: betaCategory2.id,
     },
   ];
 
   for (const prod of betaProducts) {
-    const existing = await prisma.product.findFirst({
-      where: { storeId: storeBeta.id, name: prod.name },
+    await prisma.product.create({
+      data: {
+        storeId: storeBeta.id,
+        categoryId: prod.categoryId,
+        name: prod.name,
+        price: prod.price,
+        images: prod.images,
+        stock: prod.stock,
+      },
     });
-    if (!existing) {
-      await prisma.product.create({
-        data: {
-          storeId: storeBeta.id,
-          name: prod.name,
-          price: prod.price,
-          imageUrl: prod.imageUrl,
-          stock: prod.stock,
-        },
-      });
-    }
   }
 
   console.log('Seed completed successfully.');

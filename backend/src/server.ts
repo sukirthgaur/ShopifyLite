@@ -6,6 +6,7 @@ import storeRoutes from './modules/stores/store.routes.js';
 import userRoutes from './modules/users/user.routes.js';
 import productRoutes from './modules/products/product.routes.js';
 import storefrontRoutes from './modules/storefront/storefront.routes.js';
+import categoryRoutes from './modules/categories/category.routes.js';
 import { errorHandler } from './middleware/error.middleware.js';
 
 // Initialize the Express application
@@ -33,6 +34,8 @@ app.use('/api/stores', storeRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/storefront', storefrontRoutes);
+app.use('/api/categories', categoryRoutes);
+
 
 // Basic health check endpoint to verify server status
 app.get('/api/health', (_, res) => {

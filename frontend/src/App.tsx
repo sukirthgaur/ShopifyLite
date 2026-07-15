@@ -10,6 +10,7 @@ import UserList from './pages/UserList';
 import CreateStore from './pages/CreateStore';
 import StoreManagement from './pages/StoreManagement';
 import Storefront from './pages/Storefront';
+import CategoryManager from './pages/CategoryManager';
 
 function App() {
   return (
@@ -34,7 +35,9 @@ function App() {
               {/* STORE_ADMIN only */}
               <Route element={<ProtectedRoute allowedRoles={['STORE_ADMIN']} requireStore />}>
                 <Route path="/manage" element={<StoreManagement />} />
+                <Route path="/categories" element={<CategoryManager />} />
               </Route>
+
 
               <Route element={<ProtectedRoute allowedRoles={['STORE_ADMIN']} requireNoStore />}>
                 <Route path="/create-store" element={<CreateStore />} />

@@ -13,6 +13,16 @@ export const createProduct = async (data: CreateProductInput, caller: JwtPayload
     throw new ApiError(400, 'You must have a store associated with your account to create products.');
   }
 
+  // Tenant check on categoryId if provided
+  if (data.categoryId) {
+    const category = await prisma.category.findUnique({
+      where: { id: data.categoryId },
+    });
+    if (!category || category.storeId !== caller.storeId) {
+      throw new ApiError(400, 'Invalid category for this store.');
+    }
+  }
+
   return prisma.product.create({
     data: {
       ...data,
@@ -71,6 +81,16 @@ export const updateProduct = async (id: string, data: UpdateProductInput, caller
   // Verify existence and ownership first
   await getProductById(id, caller);
 
+  // Tenant check on categoryId if provided
+  if (data.categoryId) {
+    const category = await prisma.category.findUnique({
+      where: { id: data.categoryId },
+    });
+    if (!category || category.storeId !== caller.storeId) {
+      throw new ApiError(400, 'Invalid category for this store.');
+    }
+  }
+
   return prisma.product.update({
     where: { id },
     data,
@@ -85,3 +105,4 @@ export const deleteProduct = async (id: string, caller: JwtPayload) => {
     where: { id },
   });
 };
+

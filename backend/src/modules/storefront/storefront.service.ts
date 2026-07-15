@@ -10,6 +10,18 @@ export const getStorefrontBySlug = async (slug: string) => {
   const store = await prisma.store.findUnique({
     where: { slug },
     include: {
+      categories: {
+        where: {
+          isActive: true,
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+        orderBy: {
+          name: 'asc',
+        },
+      },
       products: {
         where: {
           isActive: true,
@@ -18,7 +30,8 @@ export const getStorefrontBySlug = async (slug: string) => {
           id: true,
           name: true,
           price: true,
-          imageUrl: true,
+          images: true,
+          categoryId: true,
         },
       },
     },
@@ -31,6 +44,8 @@ export const getStorefrontBySlug = async (slug: string) => {
 
   return {
     storeName: store.name,
+    categories: store.categories,
     products: store.products,
   };
 };
+

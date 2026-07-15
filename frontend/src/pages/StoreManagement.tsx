@@ -1,12 +1,27 @@
 import { useState, useEffect } from 'react';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { useAuth } from '../context/AuthContext';
 import * as storesApi from '../api/stores';
 import * as productsApi from '../api/products';
-import type { Store, Product, PaginationMeta } from '../types';
+import * as categoriesApi from '../api/categories';
+import type { Store, Product, PaginationMeta, Category } from '../types';
 import DataTable from '../components/DataTable';
 import Pagination from '../components/Pagination';
 import Modal from '../components/Modal';
+import Toggle from '../components/Toggle';
 
+interface ProductFormValues {
+  name: string;
+  price: number;
+  stock: number;
+  categoryId: string | null;
+  images: { url: string }[];
+}
+
+/**
+ * Store Management Admin Dashboard Page
+ * Allows merchants to configure store properties, categories, catalog items, and inventory details.
+ */
 const StoreManagement = () => {
   const { user } = useAuth();
 
@@ -14,27 +29,46 @@ const StoreManagement = () => {
   const [store, setStore] = useState<Store | null>(null);
   const [storeLoading, setStoreLoading] = useState(true);
 
+  // Categories list
+  const [categories, setCategories] = useState<Category[]>([]);
+
   // Products table states
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [activeTab, setActiveTab] = useState<'active' | 'inactive'>('active');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
 
   // Modals states
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'create' | 'edit' | 'delete'>('create');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
-  // Form input states
-  const [name, setName] = useState('');
-  const [price, setPrice] = useState<number>(0);
-  const [imageUrl, setImageUrl] = useState('');
-  const [stock, setStock] = useState<number>(0);
+  // Form error and submission states
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // React Hook Form for Product Form with useFieldArray for multiple images
+  const { register, control, handleSubmit, reset } = useForm<ProductFormValues>({
+    defaultValues: {
+      name: '',
+      price: 0,
+      stock: 0,
+      categoryId: '',
+      images: [{ url: '' }]
+    }
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'images'
+  });
+
   // Client-side filtering and pagination calculations
-  const filteredProducts = products.filter(p => activeTab === 'active' ? p.isActive : !p.isActive);
+  const filteredProducts = products.filter(p => {
+    const matchesCategory = selectedCategoryFilter === 'all' || p.categoryId === selectedCategoryFilter;
+    return matchesCategory;
+  });
+
   const itemsPerPage = 10;
   const totalItems = filteredProducts.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
@@ -69,6 +103,16 @@ const StoreManagement = () => {
     }
   };
 
+  const fetchCategories = async () => {
+    if (!user?.storeId) return;
+    try {
+      const res = await categoriesApi.getCategories();
+      setCategories(res.data);
+    } catch (err) {
+      console.error('Error fetching categories list', err);
+    }
+  };
+
   const fetchProducts = async () => {
     setProductsLoading(true);
     try {
@@ -84,6 +128,7 @@ const StoreManagement = () => {
 
   useEffect(() => {
     fetchStoreDetails();
+    fetchCategories();
   }, [user]);
 
   useEffect(() => {
@@ -92,10 +137,13 @@ const StoreManagement = () => {
 
   const openCreateModal = () => {
     setModalType('create');
-    setName('');
-    setPrice(0);
-    setImageUrl('');
-    setStock(0);
+    reset({
+      name: '',
+      price: 0,
+      stock: 0,
+      categoryId: '',
+      images: [{ url: '' }]
+    });
     setFormError(null);
     setSelectedProduct(null);
     setModalOpen(true);
@@ -103,10 +151,13 @@ const StoreManagement = () => {
 
   const openEditModal = (product: Product) => {
     setModalType('edit');
-    setName(product.name);
-    setPrice(product.price);
-    setImageUrl(product.imageUrl);
-    setStock(product.stock);
+    reset({
+      name: product.name,
+      price: product.price,
+      stock: product.stock,
+      categoryId: product.categoryId || '',
+      images: product.images.map(url => ({ url }))
+    });
     setFormError(null);
     setSelectedProduct(product);
     setModalOpen(true);
@@ -118,25 +169,41 @@ const StoreManagement = () => {
     setModalOpen(true);
   };
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleProductSubmit = async (values: ProductFormValues) => {
     setFormError(null);
     setIsSubmitting(true);
 
-    if (price <= 0) {
+    const priceNum = Number(values.price);
+    const stockNum = Number(values.stock);
+
+    if (priceNum <= 0) {
       setFormError('Price must be a positive number');
       setIsSubmitting(false);
       return;
     }
 
-    if (stock < 0) {
+    if (stockNum < 0) {
       setFormError('Stock cannot be negative');
       setIsSubmitting(false);
       return;
     }
 
+    const imageUrls = values.images.map(img => img.url.trim()).filter(Boolean);
+    if (imageUrls.length === 0) {
+      setFormError('At least one valid image URL is required');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
-      const payload = { name, price: Number(price), imageUrl, stock: Number(stock) };
+      const payload = {
+        name: values.name,
+        price: priceNum,
+        stock: stockNum,
+        categoryId: values.categoryId || null,
+        images: imageUrls
+      };
+
       if (modalType === 'create') {
         await productsApi.createProduct(payload);
       } else if (modalType === 'edit' && selectedProduct) {
@@ -177,14 +244,21 @@ const StoreManagement = () => {
       accessor: (row: Product) => (
         <div className="flex items-center space-x-3">
           <img
-            src={row.imageUrl}
+            src={row.images?.[0] || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=100'}
             alt={row.name}
             className="w-10 h-10 object-cover rounded-lg border border-gray-100 bg-gray-50 flex-shrink-0"
             onError={(e) => {
               (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=100';
             }}
           />
-          <span className="font-semibold text-gray-900">{row.name}</span>
+          <div className="flex flex-col">
+            <span className="font-semibold text-gray-900">{row.name}</span>
+            {row.categoryId && (
+              <span className="text-[10px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-100/50 rounded-full px-2 py-0.2 w-fit mt-0.5">
+                {categories.find(c => c.id === row.categoryId)?.name || 'Category'}
+              </span>
+            )}
+          </div>
         </div>
       ),
     },
@@ -209,19 +283,27 @@ const StoreManagement = () => {
       ),
     },
     {
+      header: 'Quick Action',
+      accessor: (row: Product) => (
+        <div className="flex items-center space-x-2">
+          <Toggle
+            checked={row.isActive}
+            onChange={() => handleToggleActive(row)}
+          />
+          <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold border ${
+            row.isActive 
+              ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+              : 'bg-amber-50 text-amber-600 border-amber-100'
+          }`}>
+            {row.isActive ? 'Active' : 'Inactive'}
+          </span>
+        </div>
+      )
+    },
+    {
       header: 'Actions',
       accessor: (row: Product) => (
         <div className="flex space-x-2">
-          <button
-            onClick={() => handleToggleActive(row)}
-            className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-              row.isActive
-                ? 'text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100/80'
-                : 'text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100/80'
-            }`}
-          >
-            {row.isActive ? 'Deactivate' : 'Activate'}
-          </button>
           <button
             onClick={() => openEditModal(row)}
             className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100/80 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
@@ -335,28 +417,30 @@ const StoreManagement = () => {
           </button>
         </div>
 
-        {/* Tabs for Active/Inactive */}
-        <div className="flex border-b border-gray-200">
-          <button
-            onClick={() => { setActiveTab('active'); setCurrentPage(1); }}
-            className={`px-6 py-3 text-sm font-medium border-b-2 cursor-pointer transition-colors duration-200 ${
-              activeTab === 'active'
-                ? 'border-emerald-600 text-emerald-600 font-semibold'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Active Products ({products.filter(p => p.isActive).length})
-          </button>
-          <button
-            onClick={() => { setActiveTab('inactive'); setCurrentPage(1); }}
-            className={`px-6 py-3 text-sm font-medium border-b-2 cursor-pointer transition-colors duration-200 ${
-              activeTab === 'inactive'
-                ? 'border-emerald-600 text-emerald-600 font-semibold'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Inactive Products ({products.filter(p => !p.isActive).length})
-          </button>
+        {/* Category Filter */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-2 gap-4">
+          <div className="text-sm text-gray-500 font-medium px-2">
+            Showing all catalog items configured for your store storefront.
+          </div>
+
+          <div className="flex items-center space-x-2 pb-2 sm:pb-0 px-2">
+            <label htmlFor="adminCategoryFilter" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Filter by Category:
+            </label>
+            <select
+              id="adminCategoryFilter"
+              value={selectedCategoryFilter}
+              onChange={(e) => { setSelectedCategoryFilter(e.target.value); setCurrentPage(1); }}
+              className="px-3 py-1.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-xs text-gray-900 bg-white"
+            >
+              <option value="all">All Categories</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
@@ -364,7 +448,7 @@ const StoreManagement = () => {
             columns={columns}
             data={paginatedProducts}
             isLoading={productsLoading}
-            emptyMessage={activeTab === 'active' ? "No active products." : "No inactive products."}
+            emptyMessage="No products found matching the criteria."
           />
           <Pagination pagination={paginationMeta} onPageChange={setCurrentPage} />
         </div>
@@ -376,7 +460,7 @@ const StoreManagement = () => {
         onClose={() => setModalOpen(false)}
         title={modalType === 'create' ? 'Create Product Catalog Item' : 'Modify Product details'}
       >
-        <form onSubmit={handleFormSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(handleProductSubmit)} className="space-y-4 max-h-[80vh] overflow-y-auto px-1">
           {formError && (
             <div className="p-3 bg-rose-50 border border-rose-100 text-rose-700 text-sm rounded-lg font-medium">
               {formError}
@@ -389,9 +473,7 @@ const StoreManagement = () => {
             </label>
             <input
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
+              {...register('name', { required: 'Product name is required' })}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm text-gray-900"
               placeholder="e.g. Classic Premium T-Shirt"
             />
@@ -406,9 +488,7 @@ const StoreManagement = () => {
                 type="number"
                 step="0.01"
                 min="0.01"
-                value={price || ''}
-                onChange={(e) => setPrice(Number(e.target.value))}
-                required
+                {...register('price', { required: 'Price is required' })}
                 className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm text-gray-950 font-mono"
                 placeholder="0.00"
               />
@@ -420,9 +500,7 @@ const StoreManagement = () => {
               <input
                 type="number"
                 min="0"
-                value={stock}
-                onChange={(e) => setStock(Number(e.target.value))}
-                required
+                {...register('stock', { required: 'Stock is required' })}
                 className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm text-gray-950 font-mono"
                 placeholder="0"
               />
@@ -431,16 +509,54 @@ const StoreManagement = () => {
 
           <div>
             <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
-              Image URL Link
+              Category
             </label>
-            <input
-              type="url"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              required
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm text-gray-950 font-mono"
-              placeholder="https://images.unsplash.com/..."
-            />
+            <select
+              {...register('categoryId')}
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm text-gray-900 bg-white"
+            >
+              <option value="">None</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Dynamic Images Field Array */}
+          <div className="space-y-2">
+            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+              Product Images
+            </label>
+            <div className="space-y-2">
+              {fields.map((field, index) => (
+                <div key={field.id} className="flex gap-2">
+                  <input
+                    type="url"
+                    {...register(`images.${index}.url` as const, { required: 'Image URL is required' })}
+                    placeholder="https://images.unsplash.com/..."
+                    className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm text-gray-950 font-mono"
+                  />
+                  {fields.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => remove(index)}
+                      className="px-3 py-2 text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-lg text-sm transition-all font-semibold cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => append({ url: '' })}
+              className="mt-2 text-xs font-semibold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100/80 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+            >
+              + Add Image URL
+            </button>
           </div>
 
           <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">

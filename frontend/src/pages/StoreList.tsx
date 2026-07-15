@@ -5,6 +5,7 @@ import type { Store, PaginationMeta } from '../types';
 import DataTable from '../components/DataTable';
 import Pagination from '../components/Pagination';
 import Modal from '../components/Modal';
+import Toggle from '../components/Toggle';
 
 const StoreList = () => {
   const { user, refreshProfile } = useAuth();
@@ -105,19 +106,35 @@ const StoreList = () => {
     }
   };
 
+  const handleToggleActive = async (store: Store) => {
+    try {
+      await storesApi.updateStore(store.id, { isActive: !store.isActive });
+      fetchStores();
+    } catch (err: any) {
+      alert(err?.message || 'Failed to update store status');
+    }
+  };
+
   const columns = [
     { header: 'Store Name', accessor: 'name' as keyof Store },
     { header: 'Slug', accessor: 'slug' as keyof Store },
     {
       header: 'Status',
       accessor: (row: Store) => (
-        <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border ${
-          row.isActive 
-            ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
-            : 'bg-amber-50 text-amber-600 border-amber-100'
-        }`}>
-          {row.isActive ? 'Active' : 'Inactive'}
-        </span>
+        <div className="flex items-center space-x-3">
+          <Toggle
+            checked={row.isActive}
+            onChange={() => handleToggleActive(row)}
+            disabled={!isSuper}
+          />
+          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border ${
+            row.isActive 
+              ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+              : 'bg-amber-50 text-amber-600 border-amber-100'
+          }`}>
+            {row.isActive ? 'Active' : 'Inactive'}
+          </span>
+        </div>
       ),
     },
     {

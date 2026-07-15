@@ -48,6 +48,12 @@ export const authenticate = async (req: Request, _res: Response, next: NextFunct
       role: user.role,
       storeId: user.storeId,
     };
+
+    // If a SUPER_ADMIN wants to act as a store admin, override role and storeId for request scope
+    if (user.role === 'SUPER_ADMIN' && req.headers['x-act-as-store-id']) {
+      req.user.storeId = req.headers['x-act-as-store-id'] as string;
+      req.user.role = 'STORE_ADMIN';
+    }
     
     next();
   } catch (error) {
