@@ -164,6 +164,14 @@ cd /var/www/ShopifyLite/backend
 sudo -u ubuntu npx prisma db seed
 ```
 
+### 5. Automated Diagnostic Tool
+We have provided an automated status checker script to quickly diagnose Nginx, PM2, local ports, static asset directories, and database connectivity.
+Run the checker on your EC2 instance:
+```bash
+cd /var/www/ShopifyLite/deployment
+bash check-status.sh
+```
+
 ---
 
 ## Step 6: Configure SSL/TLS (Optional but Recommended)
