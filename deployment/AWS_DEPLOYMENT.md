@@ -64,18 +64,51 @@ We need to create two Security Groups: one for the EC2 instance (public web serv
 
 ---
 
-## Step 3: Configure the User Data Script
+## Step 3: Configure AWS Secrets Manager & IAM Role
 
-Open the [user-data.sh](file:///Users/bot/Downloads/Projects/ShopifyMVP/deployment/user-data.sh) file and update the configuration variables at the top of the script:
+Instead of hardcoding database credentials and JWT secrets inside the User Data script, we store them securely in **AWS Secrets Manager** and fetch them dynamically at boot.
 
-1. **`REPO_URL`**: Update this to your Git repository URL. If using a private repository, you must either:
-   - Use an HTTPS token URL: `https://<USERNAME>:<PAT_TOKEN>@github.com/.../ShopifyLite.git`
-   - Or configure SSH deploy keys on the instance beforehand (cloning manually).
-2. **`DATABASE_URL`**: Construct the PostgreSQL URI using your RDS endpoint and credentials:
-   `postgresql://<USERNAME>:<PASSWORD>@<RDS_ENDPOINT>:5432/shopify_lite`
-   *Example*: `postgresql://postgres:myPassword123@shopify-lite-db.c123456789.us-east-1.rds.amazonaws.com:5432/shopify_lite`
-3. **`JWT_SECRET`**: Replace with a secure, long random string.
-4. **`FRONTEND_URL`**: If you have a custom domain pointing to your EC2 instance, enter it here (e.g. `http://yourdomain.com`). Otherwise, you can use `*` or the public IP of your EC2 instance.
+### 1. Create Secret in AWS Secrets Manager
+1. Open the **AWS Secrets Manager Console** and click **Store a new secret**.
+2. Select **Other type of secret**.
+3. Under **Key/value pairs**, add the following keys and their production values:
+   - **`DATABASE_URL`**: `postgresql://<USERNAME>:<PASSWORD>@<RDS_ENDPOINT>:5432/shopify_lite`
+   - **`JWT_SECRET`**: A long, secure random key.
+   - **`JWT_EXPIRES_IN`**: `7d` (optional, defaults to `7d` if omitted)
+   - **`PORT`**: `5000` (optional, defaults to `5000` if omitted)
+   - **`FRONTEND_URL`**: `*` (optional, defaults to `*` if omitted)
+4. Click **Next**.
+5. Set the **Secret name** to `shopify-lite-prod-secrets`.
+6. Click **Next** through the remaining screens and click **Store**.
+
+### 2. Create IAM Policy and Role for EC2
+The EC2 instance needs permission to fetch this secret from AWS Secrets Manager.
+1. Open the **IAM Console** and go to **Policies** -> **Create policy**.
+2. Click the **JSON** tab and paste the following policy:
+   ```json
+   {
+       "Version": "2012-10-17",
+       "Statement": [
+           {
+               "Sid": "RetrieveSecrets",
+               "Effect": "Allow",
+               "Action": "secretsmanager:GetSecretValue",
+               "Resource": "arn:aws:secretsmanager:*:*:secret:shopify-lite-prod-secrets-*"
+           }
+       ]
+   }
+   ```
+3. Click **Next: Tags** -> **Next: Review**. Name the policy `shopify-lite-secrets-policy` and click **Create policy**.
+4. Go to **Roles** -> **Create role**.
+5. Select **AWS service** and select **EC2** as the common use case. Click **Next**.
+6. Search for and check the box next to `shopify-lite-secrets-policy` (and `AmazonSSMManagedInstanceCore` if you want to connect via AWS Session Manager). Click **Next**.
+7. Name the role `shopify-lite-ec2-role` and click **Create role**.
+
+### 3. Configure User Data Script Variables
+Open the [user-data.sh](file:///Users/bot/Downloads/Projects/ShopifyMVP/deployment/user-data.sh) file and update the variables at the top of the script:
+1. **`REPO_URL`**: Update this to your Git repository URL.
+2. **`SECRET_NAME`**: Set to the name of your secret (default is `shopify-lite-prod-secrets`).
+3. **`AWS_DEFAULT_REGION`**: Set to the AWS region where your database and secret reside (e.g., `us-east-1`).
 
 ---
 
@@ -89,6 +122,7 @@ Open the [user-data.sh](file:///Users/bot/Downloads/Projects/ShopifyMVP/deployme
 6. Network settings:
    - **Security groups**: Select `shopify-lite-ec2-sg`.
 7. Expand **Advanced details**:
+   - **IAM instance profile**: Select `shopify-lite-ec2-role` (This is critical to allow your instance to read from Secrets Manager).
    - Scroll down to the bottom to the **User data** box.
    - Paste the contents of your configured [user-data.sh](file:///Users/bot/Downloads/Projects/ShopifyMVP/deployment/user-data.sh) script into this box.
 8. Click **Create launch template**.

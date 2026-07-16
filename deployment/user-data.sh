@@ -17,12 +17,9 @@ REPO_URL="https://github.com/sukirthgaur/ShopifyLite.git" # Replace with your re
 APP_DIR="/var/www/ShopifyLite"
 SYSTEM_USER="ubuntu" # Default user for AWS Ubuntu AMIs
 
-# Production Environment Variables - REPLACE THESE WITH ACTUAL VALUES IN LAUNCH TEMPLATE
-DATABASE_URL="postgresql://db_user:db_password@your-rds-endpoint.amazonaws.com:5432/your_db_name"
-JWT_SECRET="generate-a-secure-random-32-character-key-here"
-JWT_EXPIRES_IN="7d"
-PORT=5000
-FRONTEND_URL="*" # Set to your actual domain name/IP for CORS security
+# AWS Secrets Manager Configurations
+SECRET_NAME="shopify-lite-prod-secrets"
+AWS_DEFAULT_REGION="us-east-1" # Replace with your target AWS Region
 
 # ------------------------------------------------------------------------------
 # 2. INSTALL SYSTEM DEPENDENCIES & NODE.JS
@@ -32,8 +29,8 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
 apt-get upgrade -y
 
-echo "Installing curl, git, nginx, build essentials, and database utilities..."
-apt-get install -y curl git nginx build-essential netcat-openbsd postgresql-client
+echo "Installing curl, git, nginx, build essentials, database utilities, jq, and aws-cli..."
+apt-get install -y curl git nginx build-essential netcat-openbsd postgresql-client jq awscli
 
 echo "Installing Node.js v20..."
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
@@ -63,6 +60,28 @@ sudo -u $SYSTEM_USER git clone "$REPO_URL" "$APP_DIR"
 # ------------------------------------------------------------------------------
 echo "Configuring Backend..."
 BACKEND_DIR="$APP_DIR/backend"
+
+# Fetch secrets from AWS Secrets Manager
+echo "Fetching configuration secrets from AWS Secrets Manager ($SECRET_NAME)..."
+SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id "$SECRET_NAME" --region "$AWS_DEFAULT_REGION" --query SecretString --output text)
+
+if [ $? -ne 0 ] || [ -z "$SECRET_JSON" ]; then
+  echo "ERROR: Failed to fetch secrets from AWS Secrets Manager. Please verify the IAM Instance Profile permissions and the secret name."
+  exit 1
+fi
+
+# Parse parameters using jq
+DATABASE_URL=$(echo "$SECRET_JSON" | jq -r '.DATABASE_URL')
+JWT_SECRET=$(echo "$SECRET_JSON" | jq -r '.JWT_SECRET')
+JWT_EXPIRES_IN=$(echo "$SECRET_JSON" | jq -r '.JWT_EXPIRES_IN // "7d"')
+PORT=$(echo "$SECRET_JSON" | jq -r '.PORT // 5000')
+FRONTEND_URL=$(echo "$SECRET_JSON" | jq -r '.FRONTEND_URL // "*"')
+
+# Validate that we successfully retrieved required config
+if [ -z "$DATABASE_URL" ] || [ "$DATABASE_URL" = "null" ] || [ -z "$JWT_SECRET" ] || [ "$JWT_SECRET" = "null" ]; then
+  echo "ERROR: DATABASE_URL or JWT_SECRET was not found in Secrets Manager!"
+  exit 1
+fi
 
 # Create backend .env file
 sudo -u $SYSTEM_USER tee "$BACKEND_DIR/.env" > /dev/null <<EOF
