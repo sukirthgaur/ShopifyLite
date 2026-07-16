@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import * as storesApi from '../api/stores';
 import type { Store } from '../types';
 
@@ -11,6 +12,7 @@ import type { Store } from '../types';
  */
 const Navbar = () => {
   const { user, logout, actingStoreId, setActingStoreId, originalRole } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [stores, setStores] = useState<Store[]>([]);
   const navigate = useNavigate();
 
@@ -146,6 +148,24 @@ const Navbar = () => {
             </span>
           </div>
         )}
+
+        {/* Dark/Light Theme Toggle */}
+        <button
+          onClick={toggleTheme}
+          type="button"
+          className="p-2 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-all cursor-pointer flex items-center justify-center dark-toggle-btn"
+          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+        >
+          {theme === 'dark' ? (
+            <svg className="w-5.5 h-5.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.001-.001z" />
+            </svg>
+          ) : (
+            <svg className="w-5.5 h-5.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+          )}
+        </button>
 
         <button
           onClick={logout}

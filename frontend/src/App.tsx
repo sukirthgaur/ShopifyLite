@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardLayout from './components/DashboardLayout';
 import Login from './pages/Login';
@@ -15,40 +16,41 @@ import CategoryManager from './pages/CategoryManager';
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/store/:slug" element={<Storefront />} />
+      <ThemeProvider>
+        <AuthProvider>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/store/:slug" element={<Storefront />} />
 
-          {/* Protected Dashboard Routes */}
-          <Route element={<ProtectedRoute />}>
-            <Route element={<DashboardLayout />}>
-              {/* SUPER_ADMIN only */}
-              <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/stores" element={<StoreList />} />
-                <Route path="/users" element={<UserList />} />
-              </Route>
+            {/* Protected Dashboard Routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route element={<DashboardLayout />}>
+                {/* SUPER_ADMIN only */}
+                <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/stores" element={<StoreList />} />
+                  <Route path="/users" element={<UserList />} />
+                </Route>
 
-              {/* STORE_ADMIN only */}
-              <Route element={<ProtectedRoute allowedRoles={['STORE_ADMIN']} requireStore />}>
-                <Route path="/manage" element={<StoreManagement />} />
-                <Route path="/categories" element={<CategoryManager />} />
-              </Route>
+                {/* STORE_ADMIN only */}
+                <Route element={<ProtectedRoute allowedRoles={['STORE_ADMIN']} requireStore />}>
+                  <Route path="/manage" element={<StoreManagement />} />
+                  <Route path="/categories" element={<CategoryManager />} />
+                </Route>
 
-
-              <Route element={<ProtectedRoute allowedRoles={['STORE_ADMIN']} requireNoStore />}>
-                <Route path="/create-store" element={<CreateStore />} />
+                <Route element={<ProtectedRoute allowedRoles={['STORE_ADMIN']} requireNoStore />}>
+                  <Route path="/create-store" element={<CreateStore />} />
+                </Route>
               </Route>
             </Route>
-          </Route>
 
-          {/* Fallback route */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </AuthProvider>
+            {/* Fallback route */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

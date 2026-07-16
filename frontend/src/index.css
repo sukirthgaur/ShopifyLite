@@ -1,6 +1,267 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @import 'tailwindcss';
 
+/* Enable class-based dark mode prefix in Tailwind v4 */
+@variant dark (&:where(.dark, .dark *));
+
 body {
   font-family: 'Inter', sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ==============================================================================
+   CENTRALIZED DARK MODE THEME OVERRIDES
+   ============================================================================== */
+
+/* Body & Document Root */
+.dark body {
+  background-color: #0f172a !important; /* slate-900 */
+  color: #f8fafc !important; /* slate-50 */
+}
+
+/* Top-level Dashboard Layout container */
+.dark .min-h-screen.bg-gray-50 {
+  background-color: #0b0f19 !important; /* slate-955 */
+}
+
+/* Header / Navbar */
+.dark nav {
+  background-color: rgba(15, 23, 42, 0.85) !important; /* slate-900 with transparency */
+  border-color: #1e293b !important; /* slate-800 */
+}
+
+.dark nav p,
+.dark nav span.text-gray-900,
+.dark nav p.text-gray-800 {
+  color: #f1f5f9 !important;
+}
+
+.dark nav p.text-gray-400 {
+  color: #94a3b8 !important;
+}
+
+.dark nav .bg-gray-50 {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f1f5f9 !important;
+}
+
+.dark nav .bg-gray-50:hover {
+  background-color: #334155 !important;
+  color: #ffffff !important;
+}
+
+.dark nav span.text-xs.text-gray-400.font-medium {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #94a3b8 !important;
+}
+
+/* Sidebar */
+.dark aside {
+  background-color: #0f172a !important;
+  border-color: #1e293b !important;
+}
+
+.dark aside .text-gray-500 {
+  color: #94a3b8 !important;
+}
+
+.dark aside .hover\:bg-gray-50:hover {
+  background-color: #1e293b !important;
+  color: #f1f5f9 !important;
+}
+
+.dark aside .hover\:text-gray-900:hover {
+  color: #ffffff !important;
+}
+
+.dark aside .bg-emerald-50 {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+  color: #34d399 !important;
+}
+
+.dark aside .text-emerald-700 {
+  color: #34d399 !important;
+}
+
+.dark aside .border-t {
+  border-color: #1e293b !important;
+}
+
+.dark aside p.text-gray-500 {
+  color: #64748b !important;
+}
+
+/* Card components (Stats, Product listings, Store details) */
+.dark .bg-white.rounded-2xl.shadow-sm,
+.dark .bg-white.rounded-xl.shadow-sm,
+.dark .bg-white.rounded-xl,
+.dark .bg-white.rounded-2xl,
+.dark .bg-white.p-6.rounded-2xl,
+.dark .bg-white.p-6.rounded-xl {
+  background-color: #0f172a !important;
+  border: 1px solid #1e293b !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1) !important;
+}
+
+.dark .bg-white h1,
+.dark .bg-white h2,
+.dark .bg-white h3,
+.dark .bg-white h4,
+.dark .bg-white p,
+.dark .bg-white span {
+  color: #f8fafc !important;
+}
+
+.dark .text-gray-800,
+.dark .text-gray-900 {
+  color: #f8fafc !important;
+}
+
+.dark .text-gray-400,
+.dark .text-gray-500,
+.dark .text-gray-600 {
+  color: #94a3b8 !important;
+}
+
+/* Tables (DataTable) */
+.dark table {
+  background-color: #0f172a !important;
+}
+
+.dark thead,
+.dark th {
+  background-color: #1e293b !important;
+  color: #94a3b8 !important;
+  border-color: #334155 !important;
+}
+
+.dark tbody tr {
+  border-color: #1e293b !important;
+}
+
+.dark tbody tr:hover {
+  background-color: rgba(30, 41, 59, 0.4) !important;
+}
+
+.dark td {
+  color: #e2e8f0 !important;
+  border-color: #1e293b !important;
+}
+
+.dark .border-gray-100 {
+  border-color: #1e293b !important;
+}
+
+/* Form inputs & dropdowns */
+.dark input[type="text"],
+.dark input[type="email"],
+.dark input[type="password"],
+.dark input[type="number"],
+.dark select,
+.dark textarea {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  border-color: #10b981 !important; /* emerald-500 */
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15) !important;
+}
+
+.dark input::placeholder {
+  color: #64748b !important;
+}
+
+.dark label {
+  color: #cbd5e1 !important;
+}
+
+/* Pagination buttons & controls */
+.dark .bg-gray-50.border-gray-200 {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+.dark .bg-gray-50.border-gray-200:hover {
+  background-color: #334155 !important;
+  color: #ffffff !important;
+}
+
+/* Super Admin dropdown selectors */
+.dark #store-selector-dropdown .bg-white\/95 {
+  background-color: #0f172a !important;
+  border-color: #1e293b !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dark #store-selector-dropdown button {
+  background-color: #0f172a !important;
+  border-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+.dark #store-selector-dropdown button:hover {
+  background-color: #1e293b !important;
+}
+
+.dark #store-selector-dropdown .hover\:bg-emerald-50:hover {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+  color: #34d399 !important;
+}
+
+.dark #store-selector-dropdown .bg-emerald-50\/50 {
+  background-color: rgba(16, 185, 129, 0.1) !important;
+  color: #34d399 !important;
+}
+
+.dark #store-selector-dropdown .text-gray-600 {
+  color: #94a3b8 !important;
+}
+
+/* Modals & Dialog overlays */
+.dark [role="dialog"],
+.dark .bg-white.rounded-3xl.shadow-2xl,
+.dark .bg-white.rounded-2xl.shadow-2xl {
+  background-color: #0f172a !important;
+  border: 1px solid #1e293b !important;
+}
+
+.dark .bg-black\/50 {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Scrollbars for Dark Mode */
+.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #0b0f19;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Theme Toggle Button custom styles */
+.dark-toggle-btn:hover {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.dark .dark-toggle-btn:hover {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
 }
