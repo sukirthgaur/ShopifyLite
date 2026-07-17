@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import * as storefrontApi from '../api/storefront';
+import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 import Loader from '../components/Loader';
 import Modal from '../components/Modal';
 
@@ -36,6 +38,10 @@ export const getProductImageUrl = (url?: string) => {
  */
 const Storefront = () => {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
+  const { isAuthenticated, user, logout } = useAuth();
+  const { items, addToCart, removeFromCart, updateQuantity, clearCart, cartCount, cartTotal } = useCart();
+
   const [storefront, setStorefront] = useState<PublicStorefront | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +52,16 @@ const Storefront = () => {
   const [selectedProduct, setSelectedProduct] = useState<PublicProduct | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
+
+  // Cart/Drawer & conflict states
+  const [orderQuantity, setOrderQuantity] = useState(1);
+  const [orderLoading, setOrderLoading] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
+  const [orderSuccess, setOrderSuccess] = useState(false);
+
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [conflictModalOpen, setConflictModalOpen] = useState(false);
+  const [pendingItem, setPendingItem] = useState<{ product: PublicProduct; quantity: number } | null>(null);
 
   useEffect(() => {
     const fetchStorefront = async () => {
@@ -68,7 +84,65 @@ const Storefront = () => {
   const openProductModal = (product: PublicProduct) => {
     setSelectedProduct(product);
     setCarouselIndex(0);
+    setOrderQuantity(1);
+    setOrderLoading(false);
+    setOrderError(null);
+    setOrderSuccess(false);
     setModalOpen(true);
+  };
+
+  const handleAddToCart = () => {
+    if (!selectedProduct || !storefront) return;
+
+    if (user?.role === 'STORE_ADMIN' || user?.role === 'SUPER_ADMIN') {
+      setOrderError('Admin accounts cannot place orders.');
+      return;
+    }
+
+    const result = addToCart(
+      {
+        productId: selectedProduct.id,
+        name: selectedProduct.name,
+        price: selectedProduct.price,
+        image: selectedProduct.images[0] || '',
+        stock: selectedProduct.stock,
+      },
+      orderQuantity,
+      slug || '',
+      storefront.storeName
+    );
+
+    if (result.conflict) {
+      setPendingItem({ product: selectedProduct, quantity: orderQuantity });
+      setConflictModalOpen(true);
+      return;
+    }
+
+    setOrderSuccess(true);
+    setModalOpen(false);
+    setDrawerOpen(true);
+  };
+
+  const handleConfirmConflict = () => {
+    if (!pendingItem || !storefront) return;
+    clearCart();
+    addToCart(
+      {
+        productId: pendingItem.product.id,
+        name: pendingItem.product.name,
+        price: pendingItem.product.price,
+        image: pendingItem.product.images[0] || '',
+        stock: pendingItem.product.stock,
+      },
+      pendingItem.quantity,
+      slug || '',
+      storefront.storeName,
+      true
+    );
+    setConflictModalOpen(false);
+    setPendingItem(null);
+    setModalOpen(false);
+    setDrawerOpen(true);
   };
 
   const nextImage = (imagesLength: number) => {
@@ -124,9 +198,58 @@ const Storefront = () => {
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
             {storefront.storeName}
           </h1>
-          <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 uppercase tracking-wider">
-            Verified Merchant
-          </span>
+          <div className="flex items-center space-x-4">
+            {/* Cart Icon Button */}
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="relative p-2 text-gray-600 hover:text-emerald-700 bg-gray-50 hover:bg-gray-100 rounded-xl transition-all border border-gray-200 cursor-pointer flex items-center justify-center"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-emerald-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white animate-pulse">
+                  {cartCount}
+                </span>
+              )}
+            </button>
+
+            {isAuthenticated ? (
+              <>
+                {user?.role === 'CUSTOMER' ? (
+                  <Link
+                    to="/my-orders"
+                    className="text-xs font-semibold text-gray-600 hover:text-emerald-700 bg-gray-50 hover:bg-gray-100 px-3.5 py-2 rounded-xl transition-all border border-gray-200"
+                  >
+                    My Purchases
+                  </Link>
+                ) : (
+                  <Link
+                    to="/dashboard"
+                    className="text-xs font-semibold text-gray-600 hover:text-emerald-700 bg-gray-50 hover:bg-gray-100 px-3.5 py-2 rounded-xl transition-all border border-gray-200"
+                  >
+                    Dashboard
+                  </Link>
+                )}
+                <button
+                  onClick={logout}
+                  className="text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3.5 py-2 rounded-xl transition-all cursor-pointer border border-rose-100"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <Link
+                to={`/login?redirect=${encodeURIComponent(window.location.pathname)}`}
+                className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-4 py-2 rounded-xl transition-all border border-emerald-100"
+              >
+                Sign In
+              </Link>
+            )}
+            <span className="hidden sm:inline text-xs font-semibold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 uppercase tracking-wider">
+              Verified Merchant
+            </span>
+          </div>
         </div>
       </header>
 
@@ -313,8 +436,235 @@ const Storefront = () => {
                 Add premium style and function to your collection. This high-quality {selectedProduct.name} is now available in our catalog.
               </p>
             </div>
+
+            {/* Ordering Actions */}
+            <div className="border-t border-gray-100 pt-6 space-y-4">
+              {orderSuccess && (
+                <div className="p-4 bg-emerald-50 border border-emerald-100 text-emerald-700 text-sm font-semibold rounded-2xl">
+                  Added to cart successfully!
+                </div>
+              )}
+              {orderError && (
+                <div className="p-4 bg-rose-50 border border-rose-100 text-rose-700 text-sm rounded-2xl">
+                  {orderError}
+                </div>
+              )}
+              
+              {selectedProduct.stock > 0 ? (
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                  <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden self-start sm:self-auto bg-white">
+                    <button
+                      type="button"
+                      disabled={orderQuantity <= 1 || orderLoading}
+                      onClick={() => setOrderQuantity(prev => prev - 1)}
+                      className="px-3.5 py-2.5 hover:bg-gray-50 text-gray-600 disabled:opacity-30 cursor-pointer"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                      </svg>
+                    </button>
+                    <input
+                      type="number"
+                      min={1}
+                      max={selectedProduct.stock}
+                      value={orderQuantity}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 1;
+                        setOrderQuantity(Math.min(selectedProduct.stock, Math.max(1, val)));
+                      }}
+                      disabled={orderLoading}
+                      className="w-12 text-center text-sm font-bold bg-transparent border-0 focus:outline-none focus:ring-0 text-gray-900"
+                    />
+                    <button
+                      type="button"
+                      disabled={orderQuantity >= selectedProduct.stock || orderLoading}
+                      onClick={() => setOrderQuantity(prev => prev + 1)}
+                      className="px-3.5 py-2.5 hover:bg-gray-50 text-gray-600 disabled:opacity-30 cursor-pointer"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                    </button>
+                  </div>
+                  
+                  <button
+                    type="button"
+                    onClick={handleAddToCart}
+                    disabled={orderLoading}
+                    className="flex-1 py-3 px-6 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white font-semibold rounded-xl shadow-md shadow-emerald-500/10 cursor-pointer disabled:opacity-50 text-sm transition-all"
+                  >
+                    Add to Cart
+                  </button>
+                </div>
+              ) : (
+                <button
+                  disabled
+                  className="w-full py-3 px-6 bg-gray-100 text-gray-400 font-semibold rounded-xl text-sm"
+                >
+                  Out of Stock
+                </button>
+              )}
+            </div>
           </div>
         </Modal>
+      )}
+
+      {/* Cart Conflict Confirmation Modal */}
+      {conflictModalOpen && pendingItem && (
+        <Modal
+          isOpen={conflictModalOpen}
+          onClose={() => {
+            setConflictModalOpen(false);
+            setPendingItem(null);
+          }}
+          title="Different Store Detected"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              You already have items from another store in your cart. Shopping from a different store will clear your current cart.
+            </p>
+            <p className="text-sm font-semibold text-gray-800">
+              Would you like to clear your cart and add this item instead?
+            </p>
+            <div className="flex items-center gap-3 pt-4 justify-end">
+              <button
+                onClick={() => {
+                  setConflictModalOpen(false);
+                  setPendingItem(null);
+                }}
+                className="px-4 py-2 text-xs font-semibold text-gray-500 hover:bg-gray-100 rounded-lg cursor-pointer transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmConflict}
+                className="px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg cursor-pointer shadow-md transition-all"
+              >
+                Clear & Add Item
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Slide-out Cart Drawer */}
+      {drawerOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          {/* Backdrop overlay */}
+          <div 
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300"
+            onClick={() => setDrawerOpen(false)}
+          />
+          <div className="absolute inset-y-0 right-0 max-w-full flex">
+            <div className="w-screen max-w-md bg-white shadow-2xl flex flex-col transform transition-transform duration-300">
+              {/* Header */}
+              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-gray-950 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                  </svg>
+                  Shopping Cart
+                </h2>
+                <button
+                  onClick={() => setDrawerOpen(false)}
+                  className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Items list */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {items.length === 0 ? (
+                  <div className="text-center py-20 space-y-4">
+                    <div className="w-16 h-16 bg-gray-50 text-gray-400 rounded-full flex items-center justify-center mx-auto">
+                      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-800 text-sm">Your cart is empty</p>
+                      <p className="text-xs text-gray-400 mt-1">Browse and add items to your cart</p>
+                    </div>
+                  </div>
+                ) : (
+                  items.map((item) => (
+                    <div key={item.productId} className="flex gap-4 pb-6 border-b border-gray-100 last:border-0 last:pb-0">
+                      <img
+                        src={getProductImageUrl(item.image)}
+                        alt={item.name}
+                        className="w-20 h-20 object-cover rounded-xl border border-gray-100 bg-gray-50 flex-shrink-0"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500';
+                        }}
+                      />
+                      <div className="flex-1 flex flex-col justify-between">
+                        <div>
+                          <h4 className="font-semibold text-gray-900 text-sm line-clamp-1">{item.name}</h4>
+                          <p className="text-sm font-extrabold text-gray-950 mt-1 font-mono">₹{item.price.toFixed(2)}</p>
+                        </div>
+                        <div className="flex items-center justify-between mt-2">
+                          <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden bg-white">
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                              className="px-2 py-1 text-gray-500 hover:bg-gray-50 disabled:opacity-30 cursor-pointer"
+                              disabled={item.quantity <= 1}
+                            >
+                              -
+                            </button>
+                            <span className="w-8 text-center text-xs font-bold text-gray-800">{item.quantity}</span>
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                              className="px-2 py-1 text-gray-500 hover:bg-gray-50 disabled:opacity-30 cursor-pointer"
+                              disabled={item.quantity >= item.stock}
+                            >
+                              +
+                            </button>
+                          </div>
+                          <button
+                            onClick={() => removeFromCart(item.productId)}
+                            className="text-xs text-rose-500 hover:text-rose-700 font-semibold cursor-pointer"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Footer */}
+              {items.length > 0 && (
+                <div className="p-6 bg-gray-50 border-t border-gray-100 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-500">Subtotal</span>
+                    <span className="text-xl font-black text-gray-950 font-mono">₹{cartTotal.toFixed(2)}</span>
+                  </div>
+                  {user?.role === 'STORE_ADMIN' || user?.role === 'SUPER_ADMIN' ? (
+                    <div className="text-xs text-rose-600 bg-rose-50 p-3 rounded-xl border border-rose-100 text-center font-medium">
+                      Admin accounts cannot place orders.
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setDrawerOpen(false);
+                        navigate('/checkout');
+                      }}
+                      className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white font-semibold rounded-xl text-center shadow-lg shadow-emerald-500/10 transition-all cursor-pointer text-sm"
+                    >
+                      Proceed to Checkout
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Footer */}

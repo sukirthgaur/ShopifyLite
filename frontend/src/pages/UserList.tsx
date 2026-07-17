@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import * as usersApi from '../api/users';
 import * as storesApi from '../api/stores';
-import type { User, Store, PaginationMeta } from '../types';
+import type { User, Store, PaginationMeta, Role } from '../types';
 import DataTable from '../components/DataTable';
 import Pagination from '../components/Pagination';
 import Modal from '../components/Modal';
@@ -26,7 +26,7 @@ const UserList = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'SUPER_ADMIN' | 'STORE_ADMIN'>('STORE_ADMIN');
+  const [role, setRole] = useState<Role>('STORE_ADMIN');
   const [storeId, setStoreId] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 

@@ -1,10 +1,15 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const Register = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
+
+  const [searchParams] = useSearchParams();
+  const redirectUrl = searchParams.get('redirect');
+  const roleParam = searchParams.get('role'); // e.g. 'customer'
+  const isCustomerIntent = roleParam === 'customer';
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -18,10 +23,14 @@ const Register = () => {
     setLoading(true);
 
     try {
-      await register(name, email, password);
-      // On registration success, redirect to dashboard.
-      // (The merchant might want to create a store since they don't have one initially)
-      navigate('/dashboard');
+      const targetRole = isCustomerIntent ? 'CUSTOMER' : 'STORE_ADMIN';
+      const registeredUser = await register(name, email, password, targetRole);
+      
+      if (registeredUser.role === 'CUSTOMER') {
+        navigate(redirectUrl || '/my-orders');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       setError(err?.message || 'Registration failed. Try a different email.');
     } finally {
@@ -36,7 +45,9 @@ const Register = () => {
           <h2 className="text-3xl font-extrabold text-gray-900 bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
             Get Started
           </h2>
-          <p className="mt-2 text-sm text-gray-500">Create your merchant account</p>
+          <p className="mt-2 text-sm text-gray-500">
+            {isCustomerIntent ? 'Create your customer account' : 'Create your merchant account'}
+          </p>
         </div>
 
         {error && (
@@ -100,7 +111,10 @@ const Register = () => {
 
         <p className="mt-6 text-center text-sm text-gray-500">
           Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-emerald-600 hover:text-emerald-700 transition-colors">
+          <Link
+            to={redirectUrl ? `/login?redirect=${encodeURIComponent(redirectUrl)}` : "/login"}
+            className="font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
+          >
             Sign In
           </Link>
         </p>

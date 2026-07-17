@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  const [searchParams] = useSearchParams();
+  const redirectUrl = searchParams.get('redirect');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,8 +20,12 @@ const Login = () => {
     setLoading(true);
 
     try {
-      await login(email, password);
-      navigate('/dashboard');
+      const loggedInUser = await login(email, password);
+      if (loggedInUser.role === 'CUSTOMER') {
+        navigate(redirectUrl || '/my-orders');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       setError(err?.message || 'Invalid email or password');
     } finally {
@@ -82,8 +89,11 @@ const Login = () => {
 
         <p className="mt-6 text-center text-sm text-gray-500">
           Don't have an account?{' '}
-          <Link to="/register" className="font-semibold text-emerald-600 hover:text-emerald-700 transition-colors">
-            Register your store
+          <Link
+            to={redirectUrl ? `/register?role=customer&redirect=${encodeURIComponent(redirectUrl)}` : "/register"}
+            className="font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
+          >
+            {redirectUrl ? 'Create a customer account' : 'Register your store'}
           </Link>
         </p>
       </div>

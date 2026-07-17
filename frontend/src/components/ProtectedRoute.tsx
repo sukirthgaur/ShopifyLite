@@ -47,6 +47,9 @@ const ProtectedRoute = ({ allowedRoles, requireStore, requireNoStore }: Protecte
     if (user.role === 'STORE_ADMIN') {
       return <Navigate to={user.storeId ? "/manage" : "/create-store"} replace />;
     }
+    if (user.role === 'CUSTOMER') {
+      return <Navigate to="/my-orders" replace />;
+    }
     return <Navigate to="/dashboard" replace />;
   }
 

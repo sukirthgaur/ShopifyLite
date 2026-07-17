@@ -13,8 +13,9 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isSuperAdmin: boolean;
   isStoreAdmin: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  isCustomer: boolean;
+  login: (email: string, password: string) => Promise<User>;
+  register: (name: string, email: string, password: string, role?: string) => Promise<User>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
   actingStoreId: string | null;
@@ -60,6 +61,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isAuthenticated = !!effectiveUser && !!token;
   const isSuperAdmin = effectiveUser?.role === 'SUPER_ADMIN';
   const isStoreAdmin = effectiveUser?.role === 'STORE_ADMIN';
+  const isCustomer = effectiveUser?.role === 'CUSTOMER';
 
   /**
    * Refreshes the currently authenticated user's profile metadata from the backend.
@@ -113,18 +115,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('token', authToken);
     setToken(authToken);
     setUser(userData);
+    return userData;
   };
 
   /**
    * Registers a new merchant storefront owner and logs them in immediately.
    */
-  const register = async (name: string, email: string, password: string) => {
-    const res = await authApi.register(name, email, password) as any;
+  const register = async (name: string, email: string, password: string, role?: string) => {
+    const res = await authApi.register(name, email, password, role) as any;
     const { user: userData, token: authToken } = res.data;
     
     localStorage.setItem('token', authToken);
     setToken(authToken);
     setUser(userData);
+    return userData;
   };
 
   /**
@@ -148,6 +152,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isAuthenticated,
         isSuperAdmin,
         isStoreAdmin,
+        isCustomer,
         login,
         register,
         logout,

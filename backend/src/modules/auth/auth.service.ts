@@ -27,13 +27,13 @@ export const register = async (data: RegisterInput) => {
   // Hash plain text password for database storage
   const hashedPassword = await hashPassword(data.password);
 
-  // Insert user account with default STORE_ADMIN role
+  // Insert user account with specified or default role
   const user = await prisma.user.create({
     data: {
       name: data.name,
       email: data.email,
       password: hashedPassword,
-      role: 'STORE_ADMIN',
+      role: data.role,
     },
   });
 

@@ -13,6 +13,8 @@ const SALT_ROUNDS = 10;
  */
 async function main() {
   // Clean up all existing dynamic data to handle breaking schema changes and prevent compound constraint failures
+  await prisma.orderItem.deleteMany();
+  await prisma.order.deleteMany();
   await prisma.product.deleteMany();
   await prisma.category.deleteMany();
 
@@ -28,6 +30,20 @@ async function main() {
       role: Role.SUPER_ADMIN,
     },
   });
+
+  // Create a default Customer user account
+  const customerPassword = await bcrypt.hash('Customer123!', SALT_ROUNDS);
+  await prisma.user.upsert({
+    where: { email: 'customer@demo.com' },
+    update: {},
+    create: {
+      name: 'Demo Customer',
+      email: 'customer@demo.com',
+      password: customerPassword,
+      role: Role.CUSTOMER,
+    },
+  });
+
 
   // 2. Create Store 1: Demo Store Alpha (sample e-commerce store tenant)
   const storeAlpha = await prisma.store.upsert({

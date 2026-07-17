@@ -3,7 +3,7 @@
  * - `SUPER_ADMIN`: Access to all stores directory records and global operations.
  * - `STORE_ADMIN`: Tenant merchant restricted permissions.
  */
-export type Role = 'SUPER_ADMIN' | 'STORE_ADMIN';
+export type Role = 'SUPER_ADMIN' | 'STORE_ADMIN' | 'CUSTOMER';
 
 /**
  * User Account Model
@@ -137,4 +137,38 @@ export interface StorefrontResponse {
     stock: number;
   }[];
 }
+
+export type OrderStatus = 'PENDING' | 'PACKED' | 'SHIPPED' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED';
+
+export interface OrderItem {
+  id: string;
+  orderId: string;
+  productId: string | null;
+  productName: string;
+  priceAtPurchase: number;
+  quantity: number;
+}
+
+export interface Order {
+  id: string;
+  storeId: string;
+  store?: Store;
+  customerId: string;
+  customer?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  status: OrderStatus;
+  totalAmount: number;
+  items: OrderItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrderListResponse {
+  orders: Order[];
+  pagination: PaginationMeta;
+}
+
 
