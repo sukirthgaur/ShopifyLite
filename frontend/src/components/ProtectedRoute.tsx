@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Loader from './Loader';
 import type { Role } from '../types';
@@ -27,6 +27,7 @@ interface ProtectedRouteProps {
  */
 const ProtectedRoute = ({ allowedRoles, requireStore, requireNoStore }: ProtectedRouteProps) => {
   const { isAuthenticated, isLoading, user } = useAuth();
+  const location = useLocation();
 
   // 1. Loading state placeholder
   if (isLoading) {
@@ -39,7 +40,8 @@ const ProtectedRoute = ({ allowedRoles, requireStore, requireNoStore }: Protecte
 
   // 2. Authentication verify check
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    const redirectParam = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/login?redirect=${redirectParam}`} replace />;
   }
 
   // 3. Authority role verify check

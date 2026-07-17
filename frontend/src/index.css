@@ -8,7 +8,6 @@ body {
   font-family: 'Inter', sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
-
 /* ==============================================================================
    CENTRALIZED DARK MODE THEME OVERRIDES
    ============================================================================== */
@@ -19,15 +18,69 @@ body {
   color: #f8fafc !important; /* slate-50 */
 }
 
-/* Top-level Dashboard Layout container */
-.dark .min-h-screen.bg-gray-50 {
-  background-color: #0b0f19 !important; /* slate-955 */
+/* Background overrides */
+.dark .bg-white {
+  background-color: #0f172a !important;
 }
 
-/* Header / Navbar */
+.dark .bg-white\/80 {
+  background-color: rgba(15, 23, 42, 0.8) !important;
+}
+
+.dark .bg-white\/95 {
+  background-color: rgba(15, 23, 42, 0.95) !important;
+}
+
+.dark .bg-gray-50 {
+  background-color: #0b0f19 !important;
+}
+
+.dark .bg-gray-100 {
+  background-color: #1e293b !important;
+}
+
+/* Text overrides */
+.dark .text-gray-950,
+.dark .text-gray-900,
+.dark .text-gray-800,
+.dark .text-gray-700 {
+  color: #f8fafc !important;
+}
+
+.dark .text-gray-600,
+.dark .text-gray-500,
+.dark .text-gray-400 {
+  color: #94a3b8 !important;
+}
+
+.dark .text-emerald-700,
+.dark .text-emerald-600 {
+  color: #34d399 !important;
+}
+
+.dark .text-rose-700,
+.dark .text-rose-600 {
+  color: #f87171 !important;
+}
+
+.dark .text-amber-700,
+.dark .text-amber-600 {
+  color: #fbbf24 !important;
+}
+
+/* Border overrides */
+.dark .border-gray-5,
+.dark .border-gray-50,
+.dark .border-gray-100,
+.dark .border-gray-200,
+.dark .border-gray-300 {
+  border-color: #1e293b !important;
+}
+
+/* Top-level Nav & Sidebar overrides */
 .dark nav {
-  background-color: rgba(15, 23, 42, 0.85) !important; /* slate-900 with transparency */
-  border-color: #1e293b !important; /* slate-800 */
+  background-color: rgba(15, 23, 42, 0.85) !important;
+  border-color: #1e293b !important;
 }
 
 .dark nav p,
@@ -57,7 +110,6 @@ body {
   color: #94a3b8 !important;
 }
 
-/* Sidebar */
 .dark aside {
   background-color: #0f172a !important;
   border-color: #1e293b !important;
@@ -93,39 +145,7 @@ body {
   color: #64748b !important;
 }
 
-/* Card components (Stats, Product listings, Store details) */
-.dark .bg-white.rounded-2xl.shadow-sm,
-.dark .bg-white.rounded-xl.shadow-sm,
-.dark .bg-white.rounded-xl,
-.dark .bg-white.rounded-2xl,
-.dark .bg-white.p-6.rounded-2xl,
-.dark .bg-white.p-6.rounded-xl {
-  background-color: #0f172a !important;
-  border: 1px solid #1e293b !important;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1) !important;
-}
-
-.dark .bg-white h1,
-.dark .bg-white h2,
-.dark .bg-white h3,
-.dark .bg-white h4,
-.dark .bg-white p,
-.dark .bg-white span {
-  color: #f8fafc !important;
-}
-
-.dark .text-gray-800,
-.dark .text-gray-900 {
-  color: #f8fafc !important;
-}
-
-.dark .text-gray-400,
-.dark .text-gray-500,
-.dark .text-gray-600 {
-  color: #94a3b8 !important;
-}
-
-/* Tables (DataTable) */
+/* Tables */
 .dark table {
   background-color: #0f172a !important;
 }
@@ -227,12 +247,14 @@ body {
 /* Modals & Dialog overlays */
 .dark [role="dialog"],
 .dark .bg-white.rounded-3xl.shadow-2xl,
-.dark .bg-white.rounded-2xl.shadow-2xl {
+.dark .bg-white.rounded-2xl.shadow-2xl,
+.dark .bg-white.rounded-xl.shadow-2xl {
   background-color: #0f172a !important;
   border: 1px solid #1e293b !important;
 }
 
-.dark .bg-black\/50 {
+.dark .bg-black\/50,
+.dark .bg-black\/40 {
   background-color: rgba(0, 0, 0, 0.7) !important;
 }
 

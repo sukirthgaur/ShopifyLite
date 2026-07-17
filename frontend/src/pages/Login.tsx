@@ -32,26 +32,29 @@ const Login = () => {
       setLoading(false);
     }
   };
+  const isCustomerIntent = redirectUrl?.includes('/store/') || redirectUrl?.includes('/checkout') || searchParams.get('role') === 'customer';
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-emerald-950 via-teal-900 to-emerald-900 px-4">
-      <div className="w-full max-w-md bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 p-8">
+      <div className="w-full max-w-md bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 p-8 dark:bg-slate-900/90 dark:border-slate-800">
         <div className="text-center mb-8">
           <h2 className="text-3xl font-extrabold text-gray-900 bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
             Shopify Lite
           </h2>
-          <p className="mt-2 text-sm text-gray-500">Sign in to your merchant dashboard</p>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            {isCustomerIntent ? 'Sign in to continue shopping' : 'Sign in to your merchant dashboard'}
+          </p>
         </div>
 
         {error && (
-          <div className="mb-4 p-3.5 bg-rose-50 border border-rose-100 text-rose-700 text-sm rounded-xl">
+          <div className="mb-4 p-3.5 bg-rose-50 border border-rose-100 text-rose-700 text-sm rounded-xl dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-400">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2 dark:text-gray-300">
               Email Address
             </label>
             <input
@@ -59,13 +62,13 @@ const Login = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm text-gray-900"
-              placeholder="e.g. admin@shopifylite.com"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm text-gray-900 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+              placeholder={isCustomerIntent ? "e.g. customer@demo.com" : "e.g. admin@shopifylite.com"}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2 dark:text-gray-300">
               Password
             </label>
             <input
@@ -73,7 +76,7 @@ const Login = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm text-gray-900"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm text-gray-900 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
               placeholder="••••••••"
             />
           </div>
@@ -87,14 +90,23 @@ const Login = () => {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-gray-500">
-          Don't have an account?{' '}
-          <Link
-            to={redirectUrl ? `/register?role=customer&redirect=${encodeURIComponent(redirectUrl)}` : "/register"}
-            className="font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
-          >
-            {redirectUrl ? 'Create a customer account' : 'Register your store'}
-          </Link>
+        <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400 space-y-2 flex flex-col items-center">
+          <span>Don't have an account?</span>
+          <div className="flex flex-wrap gap-3 mt-1 text-xs justify-center items-center">
+            <Link
+              to={redirectUrl ? `/register?role=customer&redirect=${encodeURIComponent(redirectUrl)}` : "/register?role=customer"}
+              className="font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
+            >
+              Create customer account
+            </Link>
+            <span className="text-gray-300 dark:text-gray-600">|</span>
+            <Link
+              to="/register"
+              className="font-semibold text-teal-600 hover:text-teal-700 transition-colors"
+            >
+              Register your store
+            </Link>
+          </div>
         </p>
       </div>
     </div>

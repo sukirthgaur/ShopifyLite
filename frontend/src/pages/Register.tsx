@@ -112,7 +112,7 @@ const Register = () => {
         <p className="mt-6 text-center text-sm text-gray-500">
           Already have an account?{' '}
           <Link
-            to={redirectUrl ? `/login?redirect=${encodeURIComponent(redirectUrl)}` : "/login"}
+            to={redirectUrl ? `/login?role=customer&redirect=${encodeURIComponent(redirectUrl)}` : (isCustomerIntent ? "/login?role=customer" : "/login")}
             className="font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
           >
             Sign In

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import * as ordersApi from '../api/orders';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 import DataTable from '../components/DataTable';
 import Pagination from '../components/Pagination';
 import Modal from '../components/Modal';
@@ -8,6 +10,8 @@ import type { Order, OrderStatus } from '../types';
 
 const MyOrders = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const { storeSlug } = useCart();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -109,18 +113,38 @@ const MyOrders = () => {
     },
   ];
 
+  const fallbackStoreSlug = orders.find((o) => o.store?.slug)?.store?.slug;
+  const effectiveStoreSlug = storeSlug || fallbackStoreSlug;
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Light Customer Top Navigation */}
       <header className="sticky top-0 bg-white/80 backdrop-blur-md border-b border-gray-100 py-5 px-6 z-10">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
+            <button
+              onClick={() => navigate(-1)}
+              className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 border border-gray-200 bg-white transition-all flex items-center justify-center cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-gray-400 dark:hover:text-white"
+              title="Go Back"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+            </button>
             <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">
               Shopify Lite
             </h1>
             <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 uppercase tracking-wide">
               Customer Hub
             </span>
+            {effectiveStoreSlug && (
+              <Link
+                to={`/store/${effectiveStoreSlug}`}
+                className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3.5 py-1.5 rounded-xl border border-emerald-100 transition-all cursor-pointer"
+              >
+                Back to Shop
+              </Link>
+            )}
           </div>
           
           <div className="flex items-center space-x-4">

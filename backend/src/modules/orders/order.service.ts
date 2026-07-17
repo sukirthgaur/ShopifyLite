@@ -125,6 +125,13 @@ export const getOrders = async (caller: JwtPayload, pagination: PaginationQuery)
       where: whereClause,
       include: {
         items: true,
+        store: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
         customer: {
           select: {
             id: true,
