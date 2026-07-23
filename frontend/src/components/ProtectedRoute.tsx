@@ -41,7 +41,9 @@ const ProtectedRoute = ({ allowedRoles, requireStore, requireNoStore }: Protecte
   // 2. Authentication verify check
   if (!isAuthenticated) {
     const redirectParam = encodeURIComponent(location.pathname + location.search);
-    return <Navigate to={`/login?redirect=${redirectParam}`} replace />;
+    const storeMatch = location.pathname.match(/\/store\/([^/]+)/);
+    const loginTarget = storeMatch ? `/store/${storeMatch[1]}/login` : '/login';
+    return <Navigate to={`${loginTarget}?redirect=${redirectParam}`} replace />;
   }
 
   // 3. Authority role verify check
@@ -50,7 +52,8 @@ const ProtectedRoute = ({ allowedRoles, requireStore, requireNoStore }: Protecte
       return <Navigate to={user.storeId ? "/manage" : "/create-store"} replace />;
     }
     if (user.role === 'CUSTOMER') {
-      return <Navigate to="/my-orders" replace />;
+      const slug = user.store?.slug;
+      return <Navigate to={slug ? `/store/${slug}/orders` : "/login"} replace />;
     }
     return <Navigate to="/dashboard" replace />;
   }

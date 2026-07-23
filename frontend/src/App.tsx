@@ -6,9 +6,12 @@ import ProtectedRoute from './components/ProtectedRoute';
 import DashboardLayout from './components/DashboardLayout';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import StoreLogin from './pages/StoreLogin';
+import StoreRegister from './pages/StoreRegister';
 import Dashboard from './pages/Dashboard';
 import StoreList from './pages/StoreList';
 import UserList from './pages/UserList';
+import CustomerList from './pages/CustomerList';
 import CreateStore from './pages/CreateStore';
 import StoreManagement from './pages/StoreManagement';
 import Storefront from './pages/Storefront';
@@ -20,7 +23,10 @@ import Checkout from './pages/Checkout';
 const FallbackRedirect = () => {
   const { isAuthenticated, user } = useAuth();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (user?.role === 'CUSTOMER') return <Navigate to="/my-orders" replace />;
+  if (user?.role === 'CUSTOMER') {
+    const slug = user.store?.slug;
+    return <Navigate to={slug ? `/store/${slug}/orders` : "/login"} replace />;
+  }
   if (user?.role === 'STORE_ADMIN') {
     return <Navigate to={user.storeId ? "/manage" : "/create-store"} replace />;
   }
@@ -38,9 +44,13 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/store/:slug" element={<Storefront />} />
+            <Route path="/store/:slug/login" element={<StoreLogin />} />
+            <Route path="/store/:slug/register" element={<StoreRegister />} />
 
             {/* Customer Routes */}
             <Route element={<ProtectedRoute allowedRoles={['CUSTOMER']} />}>
+              <Route path="/store/:slug/orders" element={<MyOrders />} />
+              <Route path="/store/:slug/checkout" element={<Checkout />} />
               <Route path="/my-orders" element={<MyOrders />} />
               <Route path="/checkout" element={<Checkout />} />
             </Route>
@@ -48,6 +58,11 @@ function App() {
             {/* Protected Dashboard Routes */}
             <Route element={<ProtectedRoute />}>
               <Route element={<DashboardLayout />}>
+                {/* SUPER_ADMIN & STORE_ADMIN shared routes */}
+                <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'STORE_ADMIN']} />}>
+                  <Route path="/customers" element={<CustomerList />} />
+                </Route>
+
                 {/* SUPER_ADMIN only */}
                 <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>
                   <Route path="/dashboard" element={<Dashboard />} />

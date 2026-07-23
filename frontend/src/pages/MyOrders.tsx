@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useParams } from 'react-router-dom';
 import * as ordersApi from '../api/orders';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -7,9 +7,11 @@ import { useTheme } from '../context/ThemeContext';
 import DataTable from '../components/DataTable';
 import Pagination from '../components/Pagination';
 import Modal from '../components/Modal';
+import OrderTooltip from '../components/OrderTooltip';
 import type { Order, OrderStatus } from '../types';
 
 const MyOrders = () => {
+  const { slug: routeSlug } = useParams<{ slug: string }>();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { storeSlug } = useCart();
@@ -67,14 +69,10 @@ const MyOrders = () => {
 
   const columns = [
     {
-      header: 'Products',
-      accessor: (row: Order) => {
-        if (row.items.length === 0) return 'No items';
-        const firstItem = row.items[0].productName;
-        if (row.items.length === 1) return firstItem;
-        return `${firstItem} + ${row.items.length - 1} more`;
-      },
-      className: 'font-semibold text-gray-900',
+      header: 'Order #',
+      accessor: (row: Order) => (
+        <OrderTooltip orderNumber={row.orderNumber} items={row.items} />
+      ),
     },
     {
       header: 'Total Items',
@@ -116,7 +114,7 @@ const MyOrders = () => {
   ];
 
   const fallbackStoreSlug = orders.find((o) => o.store?.slug)?.store?.slug;
-  const effectiveStoreSlug = storeSlug || fallbackStoreSlug;
+  const effectiveStoreSlug = routeSlug || storeSlug || user?.store?.slug || fallbackStoreSlug;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -230,8 +228,8 @@ const MyOrders = () => {
             {/* Reference & Date */}
             <div className="flex flex-col sm:flex-row sm:justify-between border-b border-gray-100 pb-4 gap-2 text-sm text-gray-500">
               <div>
-                <p className="font-semibold text-gray-400 text-[10px] uppercase tracking-wider">Order ID</p>
-                <p className="font-mono text-gray-900 font-semibold mt-0.5 select-all text-xs">{selectedOrder.id}</p>
+                <p className="font-semibold text-gray-400 text-[10px] uppercase tracking-wider">Order Number</p>
+                <p className="font-mono text-gray-900 font-semibold mt-0.5 select-all text-xs">#{selectedOrder.orderNumber || selectedOrder.id}</p>
               </div>
               <div className="sm:text-right">
                 <p className="font-semibold text-gray-400 text-[10px] uppercase tracking-wider">Date Placed</p>

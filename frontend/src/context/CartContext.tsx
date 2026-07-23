@@ -59,7 +59,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         return { success: false, conflict: true, existingStoreName: storeName };
       }
       // Force clear cart for the new store
-      setItems([{ ...item, quantity }]);
+      setItems([{ ...item, quantity: Math.min(item.stock, quantity) }]);
       setStoreSlug(itemStoreSlug);
       setStoreName(itemStoreName);
       return { success: true };
@@ -77,11 +77,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       if (existingItem) {
         return prevItems.map((i) =>
           i.productId === item.productId
-            ? { ...i, quantity: Math.min(i.stock, i.quantity + quantity) }
+            ? { ...i, stock: item.stock, quantity: Math.min(item.stock, i.quantity + quantity) }
             : i
         );
       }
-      return [...prevItems, { ...item, quantity }];
+      return [...prevItems, { ...item, quantity: Math.min(item.stock, quantity) }];
     });
 
     return { success: true };

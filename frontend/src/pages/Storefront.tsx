@@ -238,7 +238,7 @@ const Storefront = () => {
               <>
                 {user?.role === 'CUSTOMER' ? (
                   <Link
-                    to="/my-orders"
+                    to={`/store/${slug}/orders`}
                     className="text-xs font-semibold text-gray-600 hover:text-emerald-700 bg-gray-50 hover:bg-gray-100 px-3.5 py-2 rounded-xl transition-all border border-gray-200"
                   >
                     My Purchases
@@ -260,7 +260,7 @@ const Storefront = () => {
               </>
             ) : (
               <Link
-                to={`/login?redirect=${encodeURIComponent(window.location.pathname)}`}
+                to={`/store/${slug}/login?redirect=${encodeURIComponent(window.location.pathname)}`}
                 className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-4 py-2 rounded-xl transition-all border border-emerald-100"
               >
                 Sign In
@@ -673,7 +673,7 @@ const Storefront = () => {
                     <button
                       onClick={() => {
                         setDrawerOpen(false);
-                        navigate('/checkout');
+                        navigate(`/store/${slug}/checkout`);
                       }}
                       className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white font-semibold rounded-xl text-center shadow-lg shadow-emerald-500/10 transition-all cursor-pointer text-sm"
                     >

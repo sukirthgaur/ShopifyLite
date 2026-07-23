@@ -14,7 +14,7 @@ export const createUser = (data: { name: string; email: string; password: string
   client.post<ApiResponse<User>, ApiResponse<User>>('/users', data);
 
 // GET /users - Fetches paginated users. Tenant-isolated (STORE_ADMIN only retrieves their store's users)
-export const getUsers = (params?: { page?: number; limit?: number; search?: string }) =>
+export const getUsers = (params?: { page?: number; limit?: number; search?: string; role?: string; storeId?: string }) =>
   client.get<ApiResponse<UserListResponse>, ApiResponse<UserListResponse>>('/users', { params });
 
 // GET /users/:id - Fetches a single user by ID. Isolates tenants at DB service layer.

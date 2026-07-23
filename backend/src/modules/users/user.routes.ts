@@ -14,7 +14,7 @@ const router = Router();
 router.post('/', authenticate, requireRole('SUPER_ADMIN'), userController.createUser);
 
 // Route to retrieve users list. Isolated per merchant store inside database query.
-router.get('/', authenticate, userController.getUsers);
+router.get('/', authenticate, requireRole('SUPER_ADMIN', 'STORE_ADMIN'), userController.getUsers);
 
 // Route to retrieve a single user profile.
 router.get('/:id', authenticate, userController.getUserById);

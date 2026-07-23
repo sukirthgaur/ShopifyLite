@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useTheme } from '../context/ThemeContext';
@@ -7,10 +7,13 @@ import * as ordersApi from '../api/orders';
 import { getProductImageUrl } from './Storefront';
 
 const Checkout = () => {
+  const { slug: routeSlug } = useParams<{ slug: string }>();
   const { user, logout } = useAuth();
   const { items, cartTotal, clearCart, storeSlug, storeName } = useCart();
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+
+  const effectiveSlug = routeSlug || storeSlug || user?.store?.slug;
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +88,7 @@ const Checkout = () => {
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 w-full text-left space-y-4">
             <div className="flex justify-between border-b border-gray-100 pb-3 text-xs text-gray-400 font-medium">
               <span>Order Reference</span>
-              <span className="font-mono text-gray-900 select-all font-semibold">{successOrder.id}</span>
+              <span className="font-mono text-gray-900 select-all font-semibold">#{successOrder.orderNumber || successOrder.id}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-500 font-medium">Total Paid</span>
@@ -101,14 +104,14 @@ const Checkout = () => {
 
           <div className="flex flex-col w-full gap-3">
             <Link
-              to="/my-orders"
+              to={effectiveSlug ? `/store/${effectiveSlug}/orders` : "/my-orders"}
               className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-center shadow-md transition-all text-sm"
             >
               Track Order Status
             </Link>
-            {storeSlug && (
+            {effectiveSlug && (
               <Link
-                to={`/store/${storeSlug}`}
+                to={`/store/${effectiveSlug}`}
                 className="w-full py-3 bg-white hover:bg-gray-50 text-gray-600 border border-gray-200 font-semibold rounded-xl text-center transition-all text-sm"
               >
                 Continue Shopping

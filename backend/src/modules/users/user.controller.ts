@@ -20,7 +20,11 @@ export const createUser = asyncHandler(async (req: Request, res: Response) => {
 // GET /users - Fetch user list (paginated). Tenant-isolated for STORE_ADMIN.
 export const getUsers = asyncHandler(async (req: Request, res: Response) => {
   const pagination = parsePagination(req.query as Record<string, unknown>);
-  const result = await userService.getUsers(req.user!, pagination);
+  const filters = {
+    role: req.query.role as string | undefined,
+    storeId: req.query.storeId as string | undefined,
+  };
+  const result = await userService.getUsers(req.user!, pagination, filters);
   res.status(200).json(new ApiResponse(true, 'Users retrieved successfully', result));
 });
 

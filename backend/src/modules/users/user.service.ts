@@ -43,17 +43,41 @@ export const createUser = async (data: CreateUserInput) => {
   return excludePassword(user);
 };
 
+export interface UserFilters {
+  role?: string;
+  storeId?: string;
+}
+
 /**
  * Fetches user accounts with pagination.
- * - SUPER_ADMIN: returns all global users.
- * - STORE_ADMIN: returns only users assigned to their store (`storeId` match).
+ * - SUPER_ADMIN: returns all global users, filtered by role and/or storeId if provided.
+ * - STORE_ADMIN: returns strictly CUSTOMER accounts belonging to their store (`storeId` match).
  */
-export const getUsers = async (caller: JwtPayload, pagination: PaginationQuery) => {
+export const getUsers = async (caller: JwtPayload, pagination: PaginationQuery, filters: UserFilters = {}) => {
   const { page, limit } = pagination;
   const skip = (page - 1) * limit;
 
-  // Build filter query based on user's authorization role
-  const where = caller.role === 'SUPER_ADMIN' ? {} : { storeId: caller.storeId };
+  let where: any = {};
+
+  if (caller.role === 'SUPER_ADMIN') {
+    if (filters.role) {
+      where.role = filters.role;
+    }
+    if (filters.storeId) {
+      where.storeId = filters.storeId;
+    }
+  } else if (caller.role === 'STORE_ADMIN') {
+    if (!caller.storeId) {
+      throw new ApiError(400, 'You must be associated with a store to view customers.');
+    }
+    // STORE_ADMIN is restricted to only seeing CUSTOMER role users belonging to their store
+    where = {
+      role: 'CUSTOMER',
+      storeId: caller.storeId,
+    };
+  } else {
+    throw new ApiError(403, 'Access denied.');
+  }
 
   const [users, total] = await Promise.all([
     prisma.user.findMany({

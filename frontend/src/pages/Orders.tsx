@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import * as ordersApi from '../api/orders';
 import DataTable from '../components/DataTable';
 import Pagination from '../components/Pagination';
+import OrderTooltip from '../components/OrderTooltip';
 import type { Order, OrderStatus } from '../types';
 
 const Orders = () => {
@@ -51,6 +52,12 @@ const Orders = () => {
   };
 
   const columns = [
+    {
+      header: 'Order #',
+      accessor: (row: Order) => (
+        <OrderTooltip orderNumber={row.orderNumber} items={row.items} />
+      ),
+    },
     {
       header: 'Customer',
       accessor: (row: Order) => (

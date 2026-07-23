@@ -29,6 +29,7 @@ export interface Store {
   slug: string;
   isActive: boolean;
   admin?: User | null;
+  users?: User[];
   createdAt: string;
   updatedAt: string;
 }
@@ -151,6 +152,7 @@ export interface OrderItem {
 
 export interface Order {
   id: string;
+  orderNumber: number;
   storeId: string;
   store?: Store;
   customerId: string;

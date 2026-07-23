@@ -32,6 +32,7 @@ const Login = () => {
       setLoading(false);
     }
   };
+
   const isCustomerIntent = redirectUrl?.includes('/store/') || redirectUrl?.includes('/checkout') || searchParams.get('role') === 'customer';
 
   return (
@@ -90,7 +91,7 @@ const Login = () => {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400 space-y-2 flex flex-col items-center">
+        <div className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400 space-y-2 flex flex-col items-center">
           <span>Don't have an account?</span>
           <div className="flex flex-wrap gap-3 mt-1 text-xs justify-center items-center">
             <Link
@@ -107,7 +108,7 @@ const Login = () => {
               Register your store
             </Link>
           </div>
-        </p>
+        </div>
       </div>
     </div>
   );

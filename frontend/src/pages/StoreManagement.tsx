@@ -59,7 +59,7 @@ const StoreManagement = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // React Hook Form for Product Form with useFieldArray for multiple images
-  const { register, control, handleSubmit, reset, setValue, watch } = useForm<ProductFormValues>({
+  const { register, control, handleSubmit, reset, watch } = useForm<ProductFormValues>({
     defaultValues: {
       name: '',
       price: 0,
@@ -74,20 +74,75 @@ const StoreManagement = () => {
     name: 'images'
   });
 
-  const handleFileChange = (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const [isDragging, setIsDragging] = useState(false);
 
-    // Check size limit (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('File size exceeds the 5MB limit.');
+  const processMultipleFiles = (filesList: FileList | File[]) => {
+    const filesArray = Array.from(filesList);
+    const validFiles: File[] = [];
+
+    for (const file of filesArray) {
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        alert(`"${file.name}" is not a supported image format (JPEG, PNG, WEBP).`);
+        continue;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        alert(`"${file.name}" exceeds the 5MB size limit.`);
+        continue;
+      }
+      validFiles.push(file);
+    }
+
+    if (validFiles.length === 0) return;
+
+    const currentCount = fields.length;
+    const availableSlots = 5 - currentCount;
+
+    if (availableSlots <= 0) {
+      alert('Maximum limit of 5 images per product reached.');
       return;
     }
 
-    const previewUrl = URL.createObjectURL(file);
-    setValue(`images.${index}.file`, file);
-    setValue(`images.${index}.previewUrl`, previewUrl);
-    setValue(`images.${index}.url`, ''); // Clear URL to mark as new file
+    const filesToAdd = validFiles.slice(0, availableSlots);
+
+    if (validFiles.length > availableSlots) {
+      alert(`Only ${availableSlots} image(s) could be added (max 5 images per product).`);
+    }
+
+    filesToAdd.forEach((file) => {
+      append({
+        url: '',
+        file,
+        previewUrl: URL.createObjectURL(file),
+      });
+    });
+  };
+
+  const handleMultipleFilesChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files.length > 0) {
+      processMultipleFiles(event.target.files);
+      event.target.value = '';
+    }
+  };
+
+  const handleDropzoneDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDropzoneDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDropzoneDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processMultipleFiles(e.dataTransfer.files);
+    }
   };
 
   const watchedImages = watch('images');
@@ -171,7 +226,7 @@ const StoreManagement = () => {
       price: 0,
       stock: 0,
       categoryId: '',
-      images: [{ url: '', file: null, previewUrl: '' }]
+      images: []
     });
     setFormError(null);
     setSelectedProduct(null);
@@ -570,81 +625,106 @@ const StoreManagement = () => {
             </select>
           </div>
 
-          {/* Dynamic Images Field Array */}
-          <div className="space-y-2">
+          {/* Dynamic Images Dropzone and Preview Grid */}
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                Product Images
+                Product Images ({fields.length} / 5)
               </label>
-              <button
-                type="button"
-                onClick={() => append({ url: '', file: null, previewUrl: '' })}
-                className="text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
-              >
-                + Add Image Slot
-              </button>
+              <span className="text-xs text-gray-400 font-medium">Max 5 images</span>
             </div>
-            <div className="space-y-3">
-              {fields.map((field, index) => {
-                const imgVal = watchedImages?.[index];
-                const previewSrc = imgVal?.previewUrl || imgVal?.url;
-                const isNewFile = !!imgVal?.file;
 
-                return (
-                  <div key={field.id} className="border border-gray-100 rounded-xl p-3 bg-gray-50/50 space-y-2">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex-1 flex items-center gap-3">
+            {/* Dropzone for selecting or dragging multiple files */}
+            {fields.length < 5 ? (
+              <div
+                onDragOver={handleDropzoneDragOver}
+                onDragLeave={handleDropzoneDragLeave}
+                onDrop={handleDropzoneDrop}
+                className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all flex flex-col items-center justify-center gap-3 cursor-pointer ${
+                  isDragging
+                    ? 'border-emerald-500 bg-emerald-50/60 scale-[1.01]'
+                    : 'border-gray-200 bg-gray-50/50 hover:border-emerald-400 hover:bg-emerald-50/20'
+                }`}
+              >
+                <div className="w-10 h-10 bg-white rounded-xl border border-gray-200 flex items-center justify-center text-emerald-600 shadow-sm">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">
+                    Drag & drop images here, or{' '}
+                    <label className="text-emerald-600 hover:text-emerald-700 underline font-bold cursor-pointer inline-block">
+                      <span>browse files</span>
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/jpeg,image/png,image/webp"
+                        className="sr-only"
+                        onChange={handleMultipleFilesChange}
+                      />
+                    </label>
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">Select multiple images (JPEG, PNG, WEBP — up to 5MB each)</p>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-xl font-medium text-center">
+                Maximum limit of 5 images reached. Remove an image below to add a new one.
+              </div>
+            )}
+
+            {/* Thumbnail Preview Grid */}
+            {fields.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                {fields.map((field, index) => {
+                  const imgVal = watchedImages?.[index];
+                  const previewSrc = imgVal?.previewUrl || imgVal?.url;
+                  const isNewFile = !!imgVal?.file;
+
+                  return (
+                    <div key={field.id} className="border border-gray-200 rounded-xl p-3 bg-white shadow-sm flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
                         {previewSrc ? (
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={getProductImageUrl(previewSrc)}
-                              alt={`Product Preview ${index + 1}`}
-                              className="w-14 h-14 object-cover rounded-lg border border-gray-200 bg-white"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=100';
-                              }}
-                            />
-                            <div className="flex flex-col min-w-0">
-                              <span className="text-xs font-semibold text-gray-700 truncate max-w-[200px]">
-                                {isNewFile ? 'Selected new file' : 'Current image'}
-                              </span>
-                              <span className="text-[10px] text-gray-400 truncate max-w-[200px] font-mono">
-                                {isNewFile ? imgVal.file?.name : imgVal.url}
-                              </span>
-                            </div>
-                          </div>
+                          <img
+                            src={getProductImageUrl(previewSrc)}
+                            alt={`Thumbnail ${index + 1}`}
+                            className="w-12 h-12 object-cover rounded-lg border border-gray-100 bg-gray-50 flex-shrink-0"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=100';
+                            }}
+                          />
                         ) : (
-                          <div className="w-full">
-                            <div className="flex items-center gap-2">
-                              <label className="relative flex items-center justify-center px-4 py-2 border border-dashed border-gray-300 rounded-lg bg-white text-xs font-semibold text-emerald-600 hover:text-emerald-700 hover:border-emerald-500 cursor-pointer transition-all">
-                                <span>Select Image File</span>
-                                <input
-                                  type="file"
-                                  accept="image/jpeg,image/png,image/webp"
-                                  className="sr-only"
-                                  onChange={(e) => handleFileChange(index, e)}
-                                />
-                              </label>
-                              <span className="text-[11px] text-gray-400">JPEG, PNG, or WEBP (Max 5MB)</span>
-                            </div>
+                          <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-xs text-gray-400">
+                            No Img
                           </div>
                         )}
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-xs font-semibold text-gray-900 truncate">
+                            {isNewFile ? imgVal.file?.name : `Image ${index + 1}`}
+                          </span>
+                          <span className="text-[10px] text-gray-400 font-mono truncate">
+                            {isNewFile ? 'New Upload' : 'Existing Image'}
+                          </span>
+                        </div>
                       </div>
 
-                      {fields.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => remove(index)}
-                          className="text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-lg px-3 py-1.5 transition-all cursor-pointer"
-                        >
-                          Remove
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => remove(index)}
+                        className="text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg border border-rose-100 transition-colors cursor-pointer flex-shrink-0"
+                        title="Remove Image"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">

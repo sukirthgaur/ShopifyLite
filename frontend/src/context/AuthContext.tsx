@@ -14,8 +14,8 @@ interface AuthContextType {
   isSuperAdmin: boolean;
   isStoreAdmin: boolean;
   isCustomer: boolean;
-  login: (email: string, password: string) => Promise<User>;
-  register: (name: string, email: string, password: string, role?: string) => Promise<User>;
+  login: (email: string, password: string, storeSlug?: string) => Promise<User>;
+  register: (name: string, email: string, password: string, role?: string, storeSlug?: string) => Promise<User>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
   actingStoreId: string | null;
@@ -105,11 +105,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [token]);
 
   /**
-   * Executes merchant sign-in.
+   * Executes sign-in.
    * Stores token in localStorage and updates current auth state.
    */
-  const login = async (email: string, password: string) => {
-    const res = await authApi.login(email, password) as any;
+  const login = async (email: string, password: string, storeSlug?: string) => {
+    const res = await authApi.login(email, password, storeSlug) as any;
     const { user: userData, token: authToken } = res.data;
     
     localStorage.setItem('token', authToken);
@@ -119,10 +119,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   /**
-   * Registers a new merchant storefront owner and logs them in immediately.
+   * Registers a new user and logs them in immediately.
    */
-  const register = async (name: string, email: string, password: string, role?: string) => {
-    const res = await authApi.register(name, email, password, role) as any;
+  const register = async (name: string, email: string, password: string, role?: string, storeSlug?: string) => {
+    const res = await authApi.register(name, email, password, role, storeSlug) as any;
     const { user: userData, token: authToken } = res.data;
     
     localStorage.setItem('token', authToken);
@@ -132,15 +132,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   /**
-   * Destroys current session and redirects to the sign-in page.
+   * Destroys current session and redirects to sign-in page.
    */
   const logout = () => {
+    const customerStoreSlug = user?.store?.slug;
+    const redirectTarget = user?.role === 'CUSTOMER' && customerStoreSlug ? `/store/${customerStoreSlug}/login` : '/login';
     localStorage.removeItem('token');
     localStorage.removeItem('actingStoreId');
     setUser(null);
     setToken(null);
     setActingStoreIdState(null);
-    window.location.href = '/login';
+    window.location.href = redirectTarget;
   };
 
   return (

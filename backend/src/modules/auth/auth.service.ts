@@ -14,7 +14,7 @@ const excludePassword = <T extends { password: string }>(user: T): Omit<T, 'pass
 };
 
 /**
- * Register merchant user account.
+ * Register merchant or customer user account.
  * Checks for email conflicts, hashes the password, and inserts into DB.
  */
 export const register = async (data: RegisterInput) => {
@@ -22,6 +22,20 @@ export const register = async (data: RegisterInput) => {
   const existing = await prisma.user.findUnique({ where: { email: data.email } });
   if (existing) {
     throw new ApiError(409, 'A user with this email already exists');
+  }
+
+  let storeId: string | null = null;
+  const role = data.role || 'STORE_ADMIN';
+
+  if (role === 'CUSTOMER') {
+    if (!data.storeSlug) {
+      throw new ApiError(400, 'storeSlug is required for customer registration');
+    }
+    const store = await prisma.store.findUnique({ where: { slug: data.storeSlug } });
+    if (!store) {
+      throw new ApiError(404, 'Store not found');
+    }
+    storeId = store.id;
   }
 
   // Hash plain text password for database storage
@@ -33,7 +47,8 @@ export const register = async (data: RegisterInput) => {
       name: data.name,
       email: data.email,
       password: hashedPassword,
-      role: data.role,
+      role,
+      storeId,
     },
   });
 
@@ -61,6 +76,16 @@ export const login = async (data: LoginInput) => {
   const isValid = await comparePassword(data.password, user.password);
   if (!isValid) {
     throw new ApiError(401, 'Invalid credentials');
+  }
+
+  if (data.storeSlug) {
+    const store = await prisma.store.findUnique({ where: { slug: data.storeSlug } });
+    if (!store) {
+      throw new ApiError(404, 'Store not found');
+    }
+    if (user.role !== 'CUSTOMER' || user.storeId !== store.id) {
+      throw new ApiError(400, "This account isn't registered at this store");
+    }
   }
 
   // Encode User UID, role permission, and associated Store UID into signed JWT token

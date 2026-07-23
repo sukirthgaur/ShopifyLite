@@ -56,7 +56,7 @@ export const getStores = async (caller: JwtPayload, pagination: PaginationQuery)
       prisma.store.findMany({
         skip,
         take: limit,
-        include: { admin: { select: { id: true, name: true, email: true } } }, // Fetch admin details for the store
+        include: { users: { where: { role: 'STORE_ADMIN' }, select: { id: true, name: true, email: true } } },
         orderBy: { createdAt: 'desc' },
       }),
       prisma.store.count(),
@@ -78,7 +78,7 @@ export const getStores = async (caller: JwtPayload, pagination: PaginationQuery)
 
   const store = await prisma.store.findUnique({
     where: { id: caller.storeId },
-    include: { admin: { select: { id: true, name: true, email: true } } },
+    include: { users: { where: { role: 'STORE_ADMIN' }, select: { id: true, name: true, email: true } } },
   });
 
   return {
@@ -94,7 +94,7 @@ export const getStores = async (caller: JwtPayload, pagination: PaginationQuery)
 export const getStoreById = async (storeId: string, caller: JwtPayload) => {
   const store = await prisma.store.findUnique({
     where: { id: storeId },
-    include: { admin: { select: { id: true, name: true, email: true, role: true, createdAt: true, updatedAt: true } } },
+    include: { users: { where: { role: 'STORE_ADMIN' }, select: { id: true, name: true, email: true, role: true, createdAt: true, updatedAt: true } } },
   });
 
   if (!store) {
