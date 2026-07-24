@@ -82,11 +82,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   /**
    * Session Initialization Hook
-   * Validates stored credentials token with backend on initial load or token changes.
+   * Validates stored credentials token with backend on initial load if user is not set.
    */
   useEffect(() => {
     const init = async () => {
-      if (token) {
+      if (token && !user) {
         try {
           const res = await authApi.getProfile() as any;
           setUser(res.data);

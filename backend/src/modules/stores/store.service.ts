@@ -145,6 +145,19 @@ export const updateStore = async (storeId: string, data: UpdateStoreInput, calle
   return updated;
 };
 
+export const getStoreStats = async (caller: JwtPayload) => {
+  if (caller.role !== 'SUPER_ADMIN' && caller.originalRole !== 'SUPER_ADMIN') {
+    throw new ApiError(403, 'Access denied. Only Super Admin can view global stats.');
+  }
+
+  const [storesCount, usersCount] = await Promise.all([
+    prisma.store.count(),
+    prisma.user.count(),
+  ]);
+
+  return { storesCount, usersCount };
+};
+
 /**
  * Deletes a store by ID (restricted to SUPER_ADMIN)
  */
@@ -155,5 +168,5 @@ export const deleteStore = async (storeId: string) => {
   }
 
   await prisma.store.delete({ where: { id: storeId } });
-  return store;
+  return { id: storeId };
 };

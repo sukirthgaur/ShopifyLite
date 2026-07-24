@@ -25,6 +25,12 @@ export const getStores = asyncHandler(async (req: Request, res: Response) => {
   res.status(200).json(new ApiResponse(true, 'Stores retrieved successfully', result));
 });
 
+// GET /stores/stats - Fetch high level dashboard count statistics
+export const getStoreStats = asyncHandler(async (req: Request, res: Response) => {
+  const stats = await storeService.getStoreStats(req.user!);
+  res.status(200).json(new ApiResponse(true, 'Store stats retrieved successfully', stats));
+});
+
 // GET /stores/:id - Fetch storefront details. Tenant-isolated for STORE_ADMIN.
 export const getStoreById = asyncHandler(async (req: Request, res: Response) => {
   const store = await storeService.getStoreById(req.params.id as string, req.user!);

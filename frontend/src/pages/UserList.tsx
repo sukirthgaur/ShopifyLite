@@ -44,7 +44,7 @@ const UserList = () => {
   };
 
   const fetchStores = async () => {
-    if (!isSuper) return;
+    if (!isSuper || stores.length > 0) return;
     try {
       const res = await storesApi.getStores({ limit: 100 });
       setStores(res.data.stores);
@@ -57,11 +57,8 @@ const UserList = () => {
     fetchUsers();
   }, [currentPage]);
 
-  useEffect(() => {
-    fetchStores();
-  }, []);
-
   const openCreateModal = () => {
+    fetchStores();
     setModalType('create');
     setName('');
     setEmail('');
@@ -74,6 +71,7 @@ const UserList = () => {
   };
 
   const openEditModal = (user: User) => {
+    fetchStores();
     setModalType('edit');
     setName(user.name);
     setEmail(user.email);

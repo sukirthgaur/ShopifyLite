@@ -17,6 +17,10 @@ export const createStore = (data: { name: string; slug: string }) =>
 export const getStores = (params?: { page?: number; limit?: number; search?: string }) =>
   client.get<ApiResponse<StoreListResponse>, ApiResponse<StoreListResponse>>('/stores', { params });
 
+// GET /stores/stats - Fetch global dashboard store and user stats
+export const getStoreStats = () =>
+  client.get<ApiResponse<{ storesCount: number; usersCount: number }>, ApiResponse<any>>('/stores/stats');
+
 // GET /stores/:id - Fetch storefront details. Tenant-isolated for STORE_ADMIN.
 export const getStoreById = (id: string) =>
   client.get<ApiResponse<Store>, ApiResponse<Store>>(`/stores/${id}`);

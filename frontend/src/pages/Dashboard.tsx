@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import * as storesApi from '../api/stores';
-import * as usersApi from '../api/users';
 import Loader from '../components/Loader';
 
 const Dashboard = () => {
@@ -37,13 +36,10 @@ const Dashboard = () => {
       
       try {
         if (user?.role === 'SUPER_ADMIN') {
-          const [storesRes, usersRes] = await Promise.all([
-            storesApi.getStores({ limit: 1 }),
-            usersApi.getUsers({ limit: 1 }),
-          ]);
+          const statsRes = await storesApi.getStoreStats();
           setStats({
-            storesCount: storesRes.data.pagination.total,
-            usersCount: usersRes.data.pagination.total,
+            storesCount: statsRes.data.storesCount,
+            usersCount: statsRes.data.usersCount,
             ownStoreName: '',
             ownStoreSlug: '',
             ownStoreStatus: false,

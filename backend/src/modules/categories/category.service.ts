@@ -107,7 +107,9 @@ export const deleteCategory = async (id: string, caller: JwtPayload) => {
   // Verify existence and ownership first
   await getCategoryById(id, caller);
 
-  return prisma.category.delete({
+  await prisma.category.delete({
     where: { id },
   });
+
+  return { id };
 };

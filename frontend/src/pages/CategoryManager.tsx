@@ -85,21 +85,31 @@ const CategoryManager = () => {
 
   const handleDelete = async () => {
     if (!selectedCategory) return;
+    const targetId = selectedCategory.id;
+
+    // Optimistic UI update
+    setCategories(prev => prev.filter(c => c.id !== targetId));
+    setModalOpen(false);
+
     try {
-      await categoriesApi.deleteCategory(selectedCategory.id);
-      setModalOpen(false);
-      fetchCategories();
+      await categoriesApi.deleteCategory(targetId);
     } catch (err: any) {
       alert(err?.message || 'Failed to delete category');
+      fetchCategories();
     }
   };
 
   const handleToggleActive = async (category: Category) => {
+    const nextActive = !category.isActive;
+
+    // Optimistic UI update
+    setCategories(prev => prev.map(c => c.id === category.id ? { ...c, isActive: nextActive } : c));
+
     try {
-      await categoriesApi.updateCategory(category.id, { isActive: !category.isActive });
-      fetchCategories();
+      await categoriesApi.updateCategory(category.id, { isActive: nextActive });
     } catch (err: any) {
       alert(err?.message || 'Failed to update category status');
+      fetchCategories();
     }
   };
 

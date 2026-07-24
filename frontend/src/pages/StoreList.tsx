@@ -97,21 +97,31 @@ const StoreList = () => {
 
   const handleDelete = async () => {
     if (!selectedStore) return;
+    const targetId = selectedStore.id;
+
+    // Optimistic UI update
+    setStores(prev => prev.filter(s => s.id !== targetId));
+    setModalOpen(false);
+
     try {
-      await storesApi.deleteStore(selectedStore.id);
-      setModalOpen(false);
-      fetchStores();
+      await storesApi.deleteStore(targetId);
     } catch (err: any) {
       alert(err?.message || 'Failed to delete store');
+      fetchStores();
     }
   };
 
   const handleToggleActive = async (store: Store) => {
+    const nextActive = !store.isActive;
+
+    // Optimistic UI update
+    setStores(prev => prev.map(s => s.id === store.id ? { ...s, isActive: nextActive } : s));
+
     try {
-      await storesApi.updateStore(store.id, { isActive: !store.isActive });
-      fetchStores();
+      await storesApi.updateStore(store.id, { isActive: nextActive });
     } catch (err: any) {
       alert(err?.message || 'Failed to update store status');
+      fetchStores();
     }
   };
 

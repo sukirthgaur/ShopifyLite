@@ -90,7 +90,7 @@ export const getUsers = async (caller: JwtPayload, pagination: PaginationQuery, 
         email: true,
         role: true,
         storeId: true,
-        store: true, // Fetch joined store parameters
+        store: { select: { id: true, name: true, slug: true } },
         createdAt: true,
         updatedAt: true,
       },
@@ -112,7 +112,16 @@ export const getUsers = async (caller: JwtPayload, pagination: PaginationQuery, 
 export const getUserById = async (userId: string, caller: JwtPayload) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    include: { store: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      storeId: true,
+      store: { select: { id: true, name: true, slug: true } },
+      createdAt: true,
+      updatedAt: true,
+    },
   });
 
   if (!user) {
@@ -124,7 +133,7 @@ export const getUserById = async (userId: string, caller: JwtPayload) => {
     throw new ApiError(403, 'Access denied. You can only view users in your store.');
   }
 
-  return excludePassword(user);
+  return user;
 };
 
 /**
@@ -186,5 +195,5 @@ export const deleteUser = async (userId: string) => {
   }
 
   await prisma.user.delete({ where: { id: userId } });
-  return excludePassword(user);
+  return { id: userId };
 };

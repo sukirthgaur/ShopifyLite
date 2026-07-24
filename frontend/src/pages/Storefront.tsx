@@ -71,7 +71,9 @@ const Storefront = () => {
       setLoading(true);
       setError(null);
       try {
-        const res = await storefrontApi.getStorefront(slug);
+        const res = await storefrontApi.getStorefront(slug, {
+          categoryId: selectedCategory !== 'all' ? selectedCategory : undefined,
+        });
         setStorefront(res.data);
       } catch (err: any) {
         setError(err?.message || 'Storefront is currently offline or does not exist.');
@@ -81,7 +83,7 @@ const Storefront = () => {
     };
 
     fetchStorefront();
-  }, [slug]);
+  }, [slug, selectedCategory]);
 
   const openProductModal = (product: PublicProduct) => {
     setSelectedProduct(product);

@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import { env } from './config/env.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import storeRoutes from './modules/stores/store.routes.js';
@@ -15,6 +16,11 @@ import path from 'path';
 const app = express();
 
 /**
+ * Enable HTTP response compression (gzip/brotli) to reduce payload size by 60-80%
+ */
+app.use(compression());
+
+/**
  * Configure Cross-Origin Resource Sharing (CORS)
  * This allows our frontend application (running on a different port/domain) to securely request resources from our API.
  * We enable 'credentials: true' so HTTP cookies and authorization headers are allowed to be passed.
@@ -28,9 +34,12 @@ app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
 app.use(express.json());
 
 /**
- * Serve uploaded media files statically from the backend/uploads directory.
+ * Serve uploaded media files statically with immutable 1-year browser caching headers.
  */
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
+  maxAge: '1y',
+  immutable: true,
+}));
 
 /**
  * Modularized Route Definitions

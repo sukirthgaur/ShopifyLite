@@ -31,7 +31,11 @@ export const createProduct = async (data: CreateProductInput, caller: JwtPayload
   });
 };
 
-export const getProducts = async (caller: JwtPayload, pagination: PaginationQuery) => {
+export const getProducts = async (
+  caller: JwtPayload,
+  pagination: PaginationQuery,
+  filters?: { categoryId?: string }
+) => {
   if (!caller.storeId) {
     return {
       products: [],
@@ -42,15 +46,32 @@ export const getProducts = async (caller: JwtPayload, pagination: PaginationQuer
   const { page, limit } = pagination;
   const skip = (page - 1) * limit;
 
+  const whereClause: any = { storeId: caller.storeId };
+  if (filters?.categoryId && filters.categoryId !== 'all') {
+    whereClause.categoryId = filters.categoryId;
+  }
+
   const [products, total] = await Promise.all([
     prisma.product.findMany({
-      where: { storeId: caller.storeId },
+      where: whereClause,
+      select: {
+        id: true,
+        storeId: true,
+        categoryId: true,
+        name: true,
+        price: true,
+        images: true,
+        stock: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
       skip,
       take: limit,
       orderBy: { createdAt: 'desc' },
     }),
     prisma.product.count({
-      where: { storeId: caller.storeId },
+      where: whereClause,
     }),
   ]);
 
@@ -58,6 +79,20 @@ export const getProducts = async (caller: JwtPayload, pagination: PaginationQuer
     products,
     pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
   };
+};
+
+export const getProductStats = async (caller: JwtPayload) => {
+  if (!caller.storeId) {
+    return { total: 0, active: 0, inactive: 0 };
+  }
+
+  const [total, active, inactive] = await Promise.all([
+    prisma.product.count({ where: { storeId: caller.storeId } }),
+    prisma.product.count({ where: { storeId: caller.storeId, isActive: true } }),
+    prisma.product.count({ where: { storeId: caller.storeId, isActive: false } }),
+  ]);
+
+  return { total, active, inactive };
 };
 
 export const getProductById = async (id: string, caller: JwtPayload) => {
@@ -101,8 +136,10 @@ export const deleteProduct = async (id: string, caller: JwtPayload) => {
   // Verify existence and ownership first
   await getProductById(id, caller);
 
-  return prisma.product.delete({
+  await prisma.product.delete({
     where: { id },
   });
+
+  return { id };
 };
 

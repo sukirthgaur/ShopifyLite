@@ -3,15 +3,20 @@ import { verifyToken } from '../utils/jwt.js';
 import { ApiError } from '../utils/ApiError.js';
 import prisma from '../config/db.js';
 
+// In-memory cache for user role/storeId lookup to eliminate per-request DB overhead
+interface CachedUser {
+  storeId: string | null;
+  role: any;
+  cachedAt: number;
+}
+
+const userCache = new Map<string, CachedUser>();
+const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
+
 /**
  * Authentication Middleware
  * Confirms that a client is logged in before letting the request reach the controllers.
- * 
- * 1. Extracts the "Bearer <token>" string from the HTTP "Authorization" header.
- * 2. Verifies that the JWT is valid and hasn't expired.
- * 3. Fetches the latest user status (role, storeId) from the database to prevent stale token issues.
- * 4. Attaches the current session context to the `req.user` object.
- * 5. Calls `next()` to proceed.
+ * Uses an in-memory cache with TTL to eliminate per-request DB queries while ensuring credentials stay fresh.
  */
 export const authenticate = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
   const authHeader = req.headers.authorization;
@@ -32,17 +37,30 @@ export const authenticate = async (req: Request, _res: Response, next: NextFunct
     // Decodes payload if signature is verified successfully
     const decoded = verifyToken(token);
     
-    // Fetch latest user attributes from database to guarantee up-to-date role and storeId
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: { storeId: true, role: true },
-    });
+    let user: { storeId: string | null; role: any } | null = null;
+    const now = Date.now();
+    const cached = userCache.get(decoded.userId);
+
+    if (cached && (now - cached.cachedAt) < CACHE_TTL_MS) {
+      user = { storeId: cached.storeId, role: cached.role };
+    } else {
+      // Fetch latest user attributes from database if cache miss or expired
+      const dbUser = await prisma.user.findUnique({
+        where: { id: decoded.userId },
+        select: { storeId: true, role: true },
+      });
+
+      if (dbUser) {
+        user = dbUser;
+        userCache.set(decoded.userId, { storeId: dbUser.storeId, role: dbUser.role, cachedAt: now });
+      }
+    }
 
     if (!user) {
       return next(new ApiError(401, 'User not found.'));
     }
 
-    // Assign the decoded and updated session metadata to the Request context
+    // Assign session metadata to the Request context
     req.user = {
       userId: decoded.userId,
       role: user.role,

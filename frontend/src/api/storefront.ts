@@ -18,5 +18,5 @@ publicClient.interceptors.response.use(
   (error) => Promise.reject(error.response?.data || { message: 'Network error' })
 );
 
-export const getStorefront = (slug: string) =>
-  publicClient.get<ApiResponse<StorefrontResponse>, ApiResponse<StorefrontResponse>>(`/storefront/${slug}`);
+export const getStorefront = (slug: string, params?: { page?: number; limit?: number; categoryId?: string }) =>
+  publicClient.get<ApiResponse<StorefrontResponse>, ApiResponse<StorefrontResponse>>(`/storefront/${slug}`, { params });

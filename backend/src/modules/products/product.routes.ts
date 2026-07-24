@@ -52,6 +52,7 @@ router.use(requireRole('STORE_ADMIN'));
 
 router.post('/', upload.array('images', 10), productController.createProduct);
 router.get('/', productController.getProducts);
+router.get('/stats', productController.getProductStats);
 router.get('/:id', productController.getProductById);
 router.put('/:id', upload.array('images', 10), productController.updateProduct);
 router.delete('/:id', productController.deleteProduct);

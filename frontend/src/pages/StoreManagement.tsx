@@ -43,11 +43,13 @@ const StoreManagement = () => {
   // Categories list
   const [categories, setCategories] = useState<Category[]>([]);
 
-  // Products table states
+  // Products table & stats states
   const [products, setProducts] = useState<Product[]>([]);
+  const [productStats, setProductStats] = useState({ total: 0, active: 0, inactive: 0 });
   const [productsLoading, setProductsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
+  const [paginationMeta, setPaginationMeta] = useState<PaginationMeta>({ page: 1, limit: 10, total: 0, totalPages: 1 });
 
   // Modals states
   const [modalOpen, setModalOpen] = useState(false);
@@ -147,33 +149,6 @@ const StoreManagement = () => {
 
   const watchedImages = watch('images');
 
-  // Client-side filtering and pagination calculations
-  const filteredProducts = products.filter(p => {
-    const matchesCategory = selectedCategoryFilter === 'all' || p.categoryId === selectedCategoryFilter;
-    return matchesCategory;
-  });
-
-  const itemsPerPage = 10;
-  const totalItems = filteredProducts.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
-
-  // Adjust page number if it goes out of range
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [totalPages, currentPage]);
-
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + itemsPerPage);
-
-  const paginationMeta: PaginationMeta = {
-    page: currentPage,
-    limit: itemsPerPage,
-    total: totalItems,
-    totalPages: totalPages
-  };
-
   const fetchStoreDetails = async () => {
     if (!user?.storeId) return;
     setStoreLoading(true);
@@ -197,12 +172,27 @@ const StoreManagement = () => {
     }
   };
 
+  const fetchProductStats = async () => {
+    if (!user?.storeId) return;
+    try {
+      const res = await productsApi.getProductStats();
+      setProductStats(res.data);
+    } catch (err) {
+      console.error('Error fetching product stats', err);
+    }
+  };
+
   const fetchProducts = async () => {
+    if (!user?.storeId) return;
     setProductsLoading(true);
     try {
-      // Fetch products list with a high limit for client-side filtering/stats
-      const res = await productsApi.getProducts({ page: 1, limit: 1000 });
+      const res = await productsApi.getProducts({
+        page: currentPage,
+        limit: 10,
+        categoryId: selectedCategoryFilter !== 'all' ? selectedCategoryFilter : undefined,
+      });
       setProducts(res.data.products);
+      setPaginationMeta(res.data.pagination);
     } catch (err) {
       console.error('Error fetching products list', err);
     } finally {
@@ -213,11 +203,12 @@ const StoreManagement = () => {
   useEffect(() => {
     fetchStoreDetails();
     fetchCategories();
+    fetchProductStats();
   }, [user]);
 
   useEffect(() => {
     fetchProducts();
-  }, [user?.storeId]);
+  }, [user?.storeId, currentPage, selectedCategoryFilter]);
 
   const openCreateModal = () => {
     setModalType('create');
@@ -310,6 +301,7 @@ const StoreManagement = () => {
       }
       setModalOpen(false);
       fetchProducts();
+      fetchProductStats();
     } catch (err: any) {
       setFormError(err?.message || 'Something went wrong. Please check your inputs.');
     } finally {
@@ -319,23 +311,46 @@ const StoreManagement = () => {
 
   const handleDelete = async () => {
     if (!selectedProduct) return;
+    const targetId = selectedProduct.id;
+    const isTargetActive = selectedProduct.isActive;
+
+    // Optimistic UI update
+    setProducts(prev => prev.filter(p => p.id !== targetId));
+    setProductStats(prev => ({
+      total: Math.max(0, prev.total - 1),
+      active: isTargetActive ? Math.max(0, prev.active - 1) : prev.active,
+      inactive: !isTargetActive ? Math.max(0, prev.inactive - 1) : prev.inactive,
+    }));
+    setModalOpen(false);
+
     try {
-      await productsApi.deleteProduct(selectedProduct.id);
-      setModalOpen(false);
-      fetchProducts();
+      await productsApi.deleteProduct(targetId);
     } catch (err: any) {
       alert(err?.message || 'Failed to delete product');
+      fetchProducts();
+      fetchProductStats();
     }
   };
 
   const handleToggleActive = async (product: Product) => {
+    const nextActive = !product.isActive;
+
+    // Optimistic UI update
+    setProducts(prev => prev.map(p => p.id === product.id ? { ...p, isActive: nextActive } : p));
+    setProductStats(prev => ({
+      ...prev,
+      active: nextActive ? prev.active + 1 : Math.max(0, prev.active - 1),
+      inactive: nextActive ? Math.max(0, prev.inactive - 1) : prev.inactive + 1,
+    }));
+
     try {
       const formData = new FormData();
-      formData.append('isActive', String(!product.isActive));
+      formData.append('isActive', String(nextActive));
       await productsApi.updateProduct(product.id, formData);
-      fetchProducts();
     } catch (err: any) {
       alert(err?.message || 'Failed to update product status');
+      fetchProducts();
+      fetchProductStats();
     }
   };
 
@@ -470,7 +485,7 @@ const StoreManagement = () => {
           <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
             <div>
               <p className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Total Products</p>
-              <h3 className="text-3xl font-extrabold text-gray-950 mt-2">{products.length}</h3>
+              <h3 className="text-3xl font-extrabold text-gray-950 mt-2">{productStats.total}</h3>
             </div>
             <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -481,7 +496,7 @@ const StoreManagement = () => {
           <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
             <div>
               <p className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Active Products</p>
-              <h3 className="text-3xl font-extrabold text-emerald-600 mt-2">{products.filter(p => p.isActive).length}</h3>
+              <h3 className="text-3xl font-extrabold text-emerald-600 mt-2">{productStats.active}</h3>
             </div>
             <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -492,7 +507,7 @@ const StoreManagement = () => {
           <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
             <div>
               <p className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Inactive Products</p>
-              <h3 className="text-3xl font-extrabold text-amber-600 mt-2">{products.filter(p => !p.isActive).length}</h3>
+              <h3 className="text-3xl font-extrabold text-amber-600 mt-2">{productStats.inactive}</h3>
             </div>
             <div className="p-3 bg-amber-50 rounded-xl text-amber-600">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -547,7 +562,7 @@ const StoreManagement = () => {
         <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
           <DataTable
             columns={columns}
-            data={paginatedProducts}
+            data={products}
             isLoading={productsLoading}
             emptyMessage="No products found matching the criteria."
           />

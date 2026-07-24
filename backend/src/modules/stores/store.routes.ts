@@ -16,6 +16,9 @@ router.post('/', authenticate, requireRole('STORE_ADMIN'), storeController.creat
 // Route to list stores. Tenant-isolated (STORE_ADMIN only retrieves their associated store)
 router.get('/', authenticate, storeController.getStores);
 
+// Route to get dashboard store and user stats.
+router.get('/stats', authenticate, storeController.getStoreStats);
+
 // Route to get a specific storefront. Isolated at DB queries level.
 router.get('/:id', authenticate, storeController.getStoreById);
 

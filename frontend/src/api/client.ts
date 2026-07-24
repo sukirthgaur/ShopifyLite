@@ -12,6 +12,8 @@ const client = axios.create({
   },
 });
 
+
+
 /**
  * Request Interceptor
  * Automatically injects the JWT authentication token into HTTP request headers

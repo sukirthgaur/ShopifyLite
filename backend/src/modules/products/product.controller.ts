@@ -37,8 +37,16 @@ export const createProduct = asyncHandler(async (req: Request, res: Response) =>
 
 export const getProducts = asyncHandler(async (req: Request, res: Response) => {
   const pagination = parsePagination(req.query as Record<string, unknown>);
-  const result = await productService.getProducts(req.user!, pagination);
+  const filters = {
+    categoryId: req.query.categoryId as string | undefined,
+  };
+  const result = await productService.getProducts(req.user!, pagination, filters);
   res.status(200).json(new ApiResponse(true, 'Products retrieved successfully', result));
+});
+
+export const getProductStats = asyncHandler(async (req: Request, res: Response) => {
+  const stats = await productService.getProductStats(req.user!);
+  res.status(200).json(new ApiResponse(true, 'Product stats retrieved successfully', stats));
 });
 
 export const getProductById = asyncHandler(async (req: Request, res: Response) => {
